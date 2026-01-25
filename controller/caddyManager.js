@@ -272,7 +272,7 @@ ${phpConfig}
         if (type === 'proxy') {
             return `
     # Subdirectory Proxy: /${subdir}
-    route /${subdir}/* {
+    route /${subdir}* {
         uri strip_prefix /${subdir}
         reverse_proxy http://${proxyAddress}
     }
@@ -311,7 +311,7 @@ ${phpBlock}
 ` : '';
             return `
     # Subdirectory: /${subdir}
-    route /${subdir}/* {
+    route /${subdir}* {
         uri strip_prefix /${subdir}
         root * ${rootPath}
         
