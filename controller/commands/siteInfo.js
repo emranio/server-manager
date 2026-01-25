@@ -61,7 +61,7 @@ export default async function siteInfo() {
 
         const details = {
             'Domain': site.domain,
-            'Type': site.type === 'site' ? 'Site' : (site.type === 'wp' ? 'WordPress' : 'Proxy'),
+            'Type': site.type === 'site' ? 'Site' : (site.type === 'react' ? 'Static React Site' : (site.type === 'wp' ? 'WordPress' : 'Proxy')),
             'Status': statusDisplay,
             'Primary Key': site.primaryKey,
             'Full Path': site.path,
@@ -76,7 +76,7 @@ export default async function siteInfo() {
             details['Subdirectory Path'] = site.subdirectory;
         }
 
-        if (site.type === 'site' && site.enablePhp !== undefined) {
+        if ((site.type === 'site' || site.type === 'react') && site.enablePhp !== undefined) {
             details['PHP Support'] = site.enablePhp ? chalk.green('Enabled') : chalk.gray('Disabled');
         }
 

@@ -5,7 +5,7 @@ A powerful Node.js CLI tool for managing static sites, WordPress installations, 
 ## Features
 
 - ✨ **Fully CLI Interface** - Beautiful and intuitive command-line experience with interactive prompts
-- 🌐 **Multiple Site Types** - Support for static sites (HTML/CSS/JS/PHP), WordPress installations, and reverse proxies
+- 🌐 **Multiple Site Types** - Support for static sites (HTML/CSS/JS/PHP), Static React Sites (SPA), WordPress installations, and reverse proxies
 - 📁 **Subdirectory Support** - Host multiple sites under subdirectories (e.g., domain.com/app1, domain.com/app2)
 - 🔧 **Automatic Configuration** - Auto-generates Caddy server configurations with optimized settings
 - 💾 **Database Management** - Automated MySQL database creation and cleanup for WordPress sites
@@ -66,9 +66,9 @@ node cli.js add
 ```
 
 You'll be prompted to select:
-- **Type**: Site (HTML/CSS/JS), WordPress, or Proxy
+- **Type**: Site (HTML/CSS/JS), Static React Site (SPA), WordPress, or Proxy
 - **Domain**: Your domain name (e.g., `mysite.test` or `mysite.test/demo`)
-- **PHP Support**: For static sites, optionally enable PHP
+- **PHP Support**: For static sites and React sites, optionally enable PHP
 - **Proxy Address**: For proxy type, specify the upstream service (e.g., `localhost:3000`)
 - **CORS Origin**: For proxy type, configure CORS settings
 
@@ -78,6 +78,13 @@ You'll be prompted to select:
 ```
 Type: Site (HTML/CSS/JS)
 Domain: mysite.test
+Enable PHP: No
+```
+
+**Static React Site (SPA):**
+```
+Type: Static React Site (SPA with client-side routing)
+Domain: myapp.test
 Enable PHP: No
 ```
 
@@ -231,6 +238,49 @@ www/mydomain_test/
     └── images/
 ```
 
+#### Static React Sites (SPA)
+1. Creates site directory with `public/` folder
+2. Generates Caddy configuration for Single Page Applications
+3. Implements SPA routing fallback (serves index.html for non-existent files)
+4. Optionally enables PHP-FPM support (if needed for backend API)
+5. Includes CORS headers, gzip compression, and caching
+6. Supports client-side routing (React Router, Vue Router, etc.)
+
+**Directory Contents:**
+```
+www/myapp_test/
+└── public/           # Web root - place your built React app here
+    ├── index.html
+    ├── static/
+    │   ├── css/
+    │   └── js/
+    ├── favicon.ico
+    └── manifest.json
+```
+
+**How It Works:**
+- Caddy serves static files directly (CSS, JS, images)
+- For non-existent paths, Caddy serves `index.html` instead of 404
+- This allows React Router (or similar) to handle routing on the client-side
+- Perfect for production builds from Create React App, Vite, Next.js (static export), etc.
+
+**Deployment Example:**
+```bash
+# 1. Create the site
+node cli.js add
+# Select: Static React Site
+# Domain: myapp.test
+
+# 2. Build your React app
+cd /path/to/your/react-project
+npm run build
+
+# 3. Copy build files to the site directory
+cp -r build/* /path/to/server-manager/www/myapp_test/public/
+
+# 4. Access your app at https://myapp.test
+```
+
 #### WordPress Sites
 1. Creates site directory with `public/` folder
 2. Creates MySQL database with prefix (e.g., `site_mydomain_test`)
@@ -274,6 +324,7 @@ mydomain.test           → Main site (WordPress)
 mydomain.test/shop      → WooCommerce shop (WordPress)
 mydomain.test/api       → REST API (Proxy to localhost:3000)
 mydomain.test/admin     → Admin panel (Static site with PHP)
+mydomain.test/app       → React dashboard (Static React Site)
 ```
 
 ### Caddy Configuration
@@ -292,6 +343,15 @@ Configuration files are stored in the `caddy/` directory:
 - Gzip/Zstd compression
 - Custom error pages
 - Cache headers for static assets
+
+**Static React Site (SPA) Config Features:**
+- Static file serving with SPA fallback
+- Serves index.html for non-existent files (client-side routing)
+- Optional PHP-FPM integration (for backend APIs)
+- CORS headers
+- Gzip/Zstd compression
+- Cache headers for static assets (long-term caching for JS/CSS bundles)
+- Perfect for React, Vue, Angular, or any SPA framework
 
 **WordPress Config Features:**
 - PHP-FPM with WordPress-specific rewrite rules

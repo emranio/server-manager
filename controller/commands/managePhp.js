@@ -52,10 +52,10 @@ export default async function managePhp() {
             return;
         }
 
-        // Check if site is of type 'site'
-        if (site.type !== 'site') {
+        // Check if site is of type 'site' or 'react'
+        if (site.type !== 'site' && site.type !== 'react') {
             displayError('Invalid site type', { 
-                message: `PHP management is only available for 'Site' type. This site is type: ${site.type}` 
+                message: `PHP management is only available for 'Site' or 'Static React Site' types. This site is type: ${site.type}` 
             });
             return;
         }

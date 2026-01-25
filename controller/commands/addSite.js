@@ -44,6 +44,7 @@ export default async function addSite() {
                 message: 'Select site type:',
                 choices: [
                     { name: 'Site (HTML/CSS/JS)', value: 'site' },
+                    { name: 'Static React Site (SPA with client-side routing)', value: 'react' },
                     { name: 'WordPress Site', value: 'wp' },
                     { name: 'Proxy (Forward to another service)', value: 'proxy' }
                 ]
@@ -67,7 +68,7 @@ export default async function addSite() {
                 name: 'enablePhp',
                 message: 'Enable PHP support?',
                 default: false,
-                when: (answers) => answers.type === 'site'
+                when: (answers) => answers.type === 'site' || answers.type === 'react'
             },
             {
                 type: 'input',
@@ -183,7 +184,7 @@ export default async function addSite() {
                 logger.info('WordPress initialized', { domain, ...wpDetails });
             }
 
-            // Step 5 (or 2 for site/proxy): Create Caddy config
+            // Step 5 (or 2 for site/react/proxy): Create Caddy config
             const stepNum = type === 'wp' ? 5 : (type === 'proxy' ? 1 : 2);
             const totalSteps = type === 'wp' ? 5 : (type === 'proxy' ? 2 : 3);
             displayStep(stepNum, totalSteps, 'Creating Caddy configuration...');
@@ -202,7 +203,7 @@ export default async function addSite() {
                 database: dbName,
                 status: 'published',
                 isSubdirectory: parsedDomain.isSubdir,
-                ...(type === 'site' && { enablePhp }),
+                ...((type === 'site' || type === 'react') && { enablePhp }),
                 ...(type === 'proxy' && { proxyAddress, corsOrigin }),
                 ...(parsedDomain.isSubdir && {
                     parentDomain: parsedDomain.mainDomain,
@@ -218,7 +219,7 @@ export default async function addSite() {
             // Display success information
             const successDetails = {
                 'Domain': domain,
-                'Type': type === 'site' ? 'Site' : (type === 'wp' ? 'WordPress' : 'Proxy'),
+                'Type': type === 'site' ? 'Site' : (type === 'react' ? 'Static React Site' : (type === 'wp' ? 'WordPress' : 'Proxy')),
                 'Directory': type !== 'proxy' ? sitePath : 'N/A',
                 'Primary Key': primaryKey,
                 'Caddy Config': caddyConfigPath,
@@ -230,7 +231,7 @@ export default async function addSite() {
                 successDetails['Subdirectory'] = parsedDomain.subdir;
             }
 
-            if (type === 'site') {
+            if (type === 'site' || type === 'react') {
                 successDetails['PHP Support'] = enablePhp ? 'Enabled' : 'Disabled';
             }
 

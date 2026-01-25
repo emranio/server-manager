@@ -29,6 +29,72 @@ class CaddyManager {
     }
 
     /**
+     * Generate Caddy configuration for a static React site (SPA)
+     * @param {string} domain - Domain name
+     * @param {string} rootPath - Document root path
+     * @param {boolean} enablePhp - Enable PHP support
+     * @returns {string} Caddy configuration
+     */
+    generateReactConfig(domain, rootPath, enablePhp = false) {
+        const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
+        const phpConfig = enablePhp ? `
+    # PHP-FPM support
+    php_fastcgi ${phpFastcgiPath}
+` : '';
+
+        return `https://${domain} {
+    bind 0.0.0.0
+	tls internal
+    root * ${rootPath}
+    encode gzip
+
+    # CORS headers
+    header Access-Control-Allow-Origin *
+    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    header Access-Control-Allow-Headers *
+
+    # Handle OPTIONS preflight requests
+    @options {
+        method OPTIONS
+    }
+    respond @options 204
+${phpConfig}
+    # File server for static assets
+    file_server
+
+    # SPA fallback: serve index.html for any non-existing file
+    # This supports client-side routing (React Router, etc.)
+    try_files {path} /index.html
+
+    # Enable gzip compression
+    encode gzip zstd
+    
+    # Enable caching headers for static assets
+    @static {
+        path *.jpg *.jpeg *.png *.gif *.ico *.css *.js *.mjs *.svg *.woff *.woff2 *.ttf *.eot
+    }
+    header @static Cache-Control "public, max-age=31536000"
+
+    # Custom error pages
+    handle_errors {
+        @404 {
+            expression {http.error.status_code} == 404
+        }
+        rewrite @404 /404.html
+        
+        @error {
+            expression {http.error.status_code} >= 400
+        }
+        rewrite @error /error.html
+        
+        root * ${path.join(__dirname, '..', 'www')}
+        file_server
+    }
+}
+`;
+    }
+
+    /**
      * Generate Caddy configuration for a site
      * @param {string} domain - Domain name
      * @param {string} rootPath - Document root path
@@ -58,12 +124,7 @@ class CaddyManager {
         method OPTIONS
     }
     respond @options 204
-
-    # PHP-FPM configuration with WordPress support
-    php_fastcgi ${phpFastcgiPath} {
-        try_files {path} {path}/index.php /index.php
-    }    
-
+${phpConfig}
     # File server with directory browsing
     file_server
 
@@ -216,7 +277,38 @@ class CaddyManager {
         reverse_proxy http://${proxyAddress}
     }
 `;
+        } else if (type === 'react') {
+            // Static React site with SPA fallback
+            const phpBlock = enablePhp ? `
+        # PHP-FPM support
+        php_fastcgi ${phpFastcgiPath}
+` : '';
+            return `
+    # Subdirectory React SPA: /${subdir}
+    route /${subdir}/* {
+        uri strip_prefix /${subdir}
+        root * ${rootPath}
+        
+        # CORS headers
+        header Access-Control-Allow-Origin *
+        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers *
+${phpBlock}
+        file_server
+        
+        # SPA fallback: serve index.html for any non-existing file
+        try_files {path} /index.html
+        
+        # Enable gzip compression
+        encode gzip zstd
+    }
+`;
         } else {
+            // Regular site type - respect enablePhp option
+            const phpBlock = enablePhp ? `
+        # PHP-FPM support
+        php_fastcgi ${phpFastcgiPath}
+` : '';
             return `
     # Subdirectory: /${subdir}
     route /${subdir}/* {
@@ -227,12 +319,7 @@ class CaddyManager {
         header Access-Control-Allow-Origin *
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
-        
-        # PHP-FPM configuration with WordPress support
-        php_fastcgi ${phpFastcgiPath} {
-            try_files {path} {path}/index.php /index.php
-        }
-
+${phpBlock}
         file_server
         # Enable gzip compression
         encode gzip zstd
@@ -300,9 +387,9 @@ class CaddyManager {
             // Read existing config
             let config = fs.readFileSync(parentConfigFile, 'utf8');
 
-            // Find and remove subdirectory block
+            // Find and remove subdirectory block (handles site, wp, and react types)
             const subdirPattern = new RegExp(
-                `\\s*# Subdirectory: /${subdir}\\s*route /${subdir}/\\* \\{[^}]*\\}\\s*`,
+                `\\s*# Subdirectory(?:\\sReact SPA)?: /${subdir}\\s*route /${subdir}/\\* \\{[^}]*\\}\\s*`,
                 'gs'
             );
 
@@ -342,6 +429,8 @@ class CaddyManager {
         let config;
         if (type === 'site') {
             config = this.generateSiteConfig(domain, rootPath, enablePhp);
+        } else if (type === 'react') {
+            config = this.generateReactConfig(domain, rootPath, enablePhp);
         } else if (type === 'wp') {
             config = this.generateWordPressConfig(domain, rootPath);
         } else if (type === 'proxy') {
