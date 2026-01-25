@@ -59,12 +59,12 @@ class CaddyManager {
     }
     respond @options 204
 ${phpConfig}
-    # File server for static assets
-    file_server
-
     # SPA fallback: serve index.html for any non-existing file
     # This supports client-side routing (React Router, etc.)
     try_files {path} /index.html
+
+    # File server for static assets
+    file_server
 
     # Enable gzip compression
     encode gzip zstd
