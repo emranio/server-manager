@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { parseDomain } from './utils.js';
+import { parseDomain, generatePrimaryKey } from './utils.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -418,7 +418,7 @@ ${phpBlock}
 
         // For subdirectory sites, update parent config instead of creating new file
         if (parsed.isSubdir) {
-            const parentKey = primaryKey.replace(new RegExp(`_${parsed.subdir}$`), '');
+            const parentKey = generatePrimaryKey(parsed.mainDomain);
             this.addSubdirToParentConfig(parentKey, parsed.mainDomain, parsed.subdir, type, rootPath, options);
             return this.getConfigPath(parentKey); // Return parent config path
         }
@@ -458,7 +458,7 @@ ${phpBlock}
         if (domain) {
             const parsed = parseDomain(domain);
             if (parsed.isSubdir) {
-                const parentKey = primaryKey.replace(new RegExp(`_${parsed.subdir}$`), '');
+                const parentKey = generatePrimaryKey(parsed.mainDomain);
                 return this.removeSubdirFromParentConfig(parentKey, parsed.subdir);
             }
         }
