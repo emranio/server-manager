@@ -1,0 +1,9 @@
+node_modules
+.env
+logs/*
+www/*
+caddy/*
+controller/sites.json
+.DS_Store
+# keep all .gitkeep files
+!**/.gitkeep

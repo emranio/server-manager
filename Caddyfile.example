@@ -1,0 +1,17 @@
+# Main Caddyfile Example
+# Place this in /etc/caddy/Caddyfile or your preferred location
+
+# Global options
+{
+    # Email for Let's Encrypt
+    email admin@example.com
+    
+    # Admin API endpoint
+    admin on
+}
+
+# Import all site configurations from the Server directory
+import /Users/MacUser/Server/caddy/*.caddy
+
+# You can also add other global configurations here
+# For example, a default site or catch-all handler
