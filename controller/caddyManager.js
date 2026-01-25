@@ -285,7 +285,7 @@ ${phpConfig}
 ` : '';
             return `
     # Subdirectory React SPA: /${subdir}
-    route /${subdir}/* {
+    route /${subdir}* {
         uri strip_prefix /${subdir}
         root * ${rootPath}
         
@@ -294,10 +294,10 @@ ${phpConfig}
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
 ${phpBlock}
-        file_server
-        
         # SPA fallback: serve index.html for any non-existing file
         try_files {path} /index.html
+        
+        file_server
         
         # Enable gzip compression
         encode gzip zstd
