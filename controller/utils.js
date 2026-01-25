@@ -63,13 +63,13 @@ export async function executeCommand(command) {
  * @returns {boolean} True if valid
  */
 export function isValidDomain(domain) {
-    // Check if it's a subdirectory site (e.g., abc.wp/demo)
+    // Check if it's a subdirectory site (e.g., abc.wp/demo or abc.wp/tools/app)
     if (domain.includes('/')) {
         const parts = domain.split('/');
-        if (parts.length !== 2) {
+        if (parts.length < 2) {
             return false;
         }
-        const [mainDomain, subdir] = parts;
+        const [mainDomain, ...pathSegments] = parts;
 
         // Validate main domain
         if (!mainDomain.includes('.')) {
@@ -81,10 +81,12 @@ export function isValidDomain(domain) {
             return false;
         }
 
-        // Validate subdirectory (alphanumeric, hyphens, underscores)
-        const subdirRegex = /^[a-zA-Z0-9_-]+$/;
-        if (!subdirRegex.test(subdir)) {
-            return false;
+        // Validate each path segment (alphanumeric, hyphens, underscores)
+        const pathRegex = /^[a-zA-Z0-9_-]+$/;
+        for (const segment of pathSegments) {
+            if (!segment || !pathRegex.test(segment)) {
+                return false;
+            }
         }
 
         return true;
@@ -111,12 +113,14 @@ export function isValidDomain(domain) {
 
 /**
  * Parse domain into main domain and subdirectory
- * @param {string} domain - Domain name (e.g., "abc.wp/demo" or "abc.wp")
+ * @param {string} domain - Domain name (e.g., "abc.wp/demo" or "abc.wp/tools/app" or "abc.wp")
  * @returns {Object} { mainDomain, subdir, isSubdir }
  */
 export function parseDomain(domain) {
     if (domain.includes('/')) {
-        const [mainDomain, subdir] = domain.split('/');
+        const slashIndex = domain.indexOf('/');
+        const mainDomain = domain.substring(0, slashIndex);
+        const subdir = domain.substring(slashIndex + 1);
         return { mainDomain, subdir, isSubdir: true };
     }
     return { mainDomain: domain, subdir: null, isSubdir: false };
