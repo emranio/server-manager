@@ -159,6 +159,18 @@ export default async function addSite() {
                 if (!fs.existsSync(publicPath)) {
                     fs.mkdirSync(publicPath, { recursive: true });
                 }
+                
+                // Copy welcome.html as index.html for site and react types
+                if (type === 'site' || type === 'react') {
+                    const welcomeHtmlPath = path.join(__dirname, '..', 'welcome.html');
+                    const indexHtmlPath = path.join(publicPath, 'index.html');
+                    
+                    if (fs.existsSync(welcomeHtmlPath)) {
+                        fs.copyFileSync(welcomeHtmlPath, indexHtmlPath);
+                        logger.info('Welcome page copied to site', { domain, welcomePage: indexHtmlPath });
+                    }
+                }
+                
                 createdResources.directory = true;
                 logger.info('Site directory created with public folder', { domain, path: sitePath, publicPath: publicPath });
             }
