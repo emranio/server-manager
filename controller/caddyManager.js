@@ -268,12 +268,18 @@ ${phpConfig}
     generateSubdirConfig(mainDomain, subdir, type, rootPath, options = {}) {
         const { enablePhp = false, proxyAddress = null } = options;
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
+        const subdirId = subdir.replace(/[^a-zA-Z0-9]/g, '_');
 
         if (type === 'proxy') {
             return `
     # Subdirectory Proxy: /${subdir}
-    route /${subdir}* {
-        uri strip_prefix /${subdir}
+    # Auto redirect to add trailing slash for directory access
+    @subdir_${subdirId}_notrail {
+        path /${subdir}
+    }
+    redir @subdir_${subdirId}_notrail /${subdir}/ 308
+    
+    handle_path /${subdir}/* {
         reverse_proxy http://${proxyAddress}
     }
 `;
@@ -285,8 +291,13 @@ ${phpConfig}
 ` : '';
             return `
     # Subdirectory React SPA: /${subdir}
-    route /${subdir}* {
-        uri strip_prefix /${subdir}
+    # Auto redirect to add trailing slash for directory access
+    @subdir_${subdirId}_notrail {
+        path /${subdir}
+    }
+    redir @subdir_${subdirId}_notrail /${subdir}/ 308
+    
+    handle_path /${subdir}/* {
         root * ${rootPath}
         
         # CORS headers
@@ -311,8 +322,13 @@ ${phpBlock}
 ` : '';
             return `
     # Subdirectory: /${subdir}
-    route /${subdir}* {
-        uri strip_prefix /${subdir}
+    # Auto redirect to add trailing slash for directory access
+    @subdir_${subdirId}_notrail {
+        path /${subdir}
+    }
+    redir @subdir_${subdirId}_notrail /${subdir}/ 308
+    
+    handle_path /${subdir}/* {
         root * ${rootPath}
         
         # CORS headers
