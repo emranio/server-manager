@@ -37,14 +37,15 @@ class CaddyManager {
      */
     generateReactConfig(domain, rootPath, enablePhp = false) {
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
+        const tlsInternal = process.env.TLS_INTERNAL === 'true';
         const phpConfig = enablePhp ? `
     # PHP-FPM support
     php_fastcgi ${phpFastcgiPath}
 ` : '';
+        const tlsConfig = tlsInternal ? '\n    tls internal' : '';
 
         return `https://${domain} {
-    bind 0.0.0.0
-	tls internal
+    bind 0.0.0.0${tlsConfig}
     root * ${rootPath}
     encode gzip
 
@@ -103,14 +104,15 @@ ${phpConfig}
      */
     generateSiteConfig(domain, rootPath, enablePhp = false) {
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
+        const tlsInternal = process.env.TLS_INTERNAL === 'true';
         const phpConfig = enablePhp ? `
     # PHP-FPM support
     php_fastcgi ${phpFastcgiPath}
 ` : '';
+        const tlsConfig = tlsInternal ? '\n    tls internal' : '';
 
         return `https://${domain} {
-    bind 0.0.0.0
-	tls internal
+    bind 0.0.0.0${tlsConfig}
     root * ${rootPath}
     encode gzip
 
@@ -164,9 +166,10 @@ ${phpConfig}
      */
     generateWordPressConfig(domain, rootPath) {
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
+        const tlsInternal = process.env.TLS_INTERNAL === 'true';
+        const tlsConfig = tlsInternal ? '\n    tls internal' : '';
         return `https://${domain} {
-    bind 0.0.0.0
-	tls internal
+    bind 0.0.0.0${tlsConfig}
 
     root * ${rootPath}
 
@@ -232,9 +235,10 @@ ${phpConfig}
      * @param {string} corsOrigin - CORS origin (default: *)
      * @returns {string} Caddy configuration\n     */
     generateProxyConfig(domain, proxyAddress, corsOrigin = '*') {
+        const tlsInternal = process.env.TLS_INTERNAL === 'true';
+        const tlsConfig = tlsInternal ? '\n    tls internal' : '';
         return `https://${domain} {
-    bind 0.0.0.0
-\ttls internal
+    bind 0.0.0.0${tlsConfig}
 
     # Enable gzip compression
     encode gzip zstd
