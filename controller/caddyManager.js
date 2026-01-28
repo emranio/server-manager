@@ -60,15 +60,17 @@ class CaddyManager {
     }
     respond @options 204
 ${phpConfig}
+    # Enable compression (dynamic fallback)
+    encode zstd gzip
+
     # SPA fallback: serve index.html for any non-existing file
     # This supports client-side routing (React Router, etc.)
     try_files {path} /index.html
 
-    # File server for static assets
-    file_server
-
-    # Enable gzip compression
-    encode gzip zstd
+    # File server with pre-compressed file support (br first, then gzip)
+    file_server {
+        precompressed br gzip
+    }
     
     # Enable caching headers for static assets
     @static {
@@ -127,11 +129,13 @@ ${phpConfig}
     }
     respond @options 204
 ${phpConfig}
-    # File server with directory browsing
-    file_server
+    # Enable compression (dynamic fallback)
+    encode zstd gzip
 
-    # Enable gzip compression
-    encode gzip zstd
+    # File server with pre-compressed file support (br first, then gzip)
+    file_server {
+        precompressed br gzip
+    }
     
     # Enable caching headers for static assets
     @static {
@@ -197,11 +201,13 @@ ${phpConfig}
         try_files {path} {path}/index.php /index.php
     }
 
-    # File server for static assets
-    file_server
+    # Enable compression (dynamic fallback)
+    encode zstd gzip
 
-    # Enable gzip compression
-    encode gzip zstd
+    # File server with pre-compressed file support (br first, then gzip)
+    file_server {
+        precompressed br gzip
+    }
 
     # Enable caching headers for static assets
     @static {
@@ -309,13 +315,16 @@ ${phpConfig}
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
 ${phpBlock}
+        # Enable compression (dynamic fallback)
+        encode zstd gzip
+        
         # SPA fallback: serve index.html for any non-existing file
         try_files {path} /index.html
         
-        file_server
-        
-        # Enable gzip compression
-        encode gzip zstd
+        # File server with pre-compressed file support (br first, then gzip)
+        file_server {
+            precompressed br gzip
+        }
     }
 `;
         } else {
@@ -340,9 +349,13 @@ ${phpBlock}
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
 ${phpBlock}
-        file_server
-        # Enable gzip compression
-        encode gzip zstd
+        # Enable compression (dynamic fallback)
+        encode zstd gzip
+        
+        # File server with pre-compressed file support (br first, then gzip)
+        file_server {
+            precompressed br gzip
+        }
     }
 `;
         }
