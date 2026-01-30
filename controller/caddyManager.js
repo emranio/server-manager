@@ -61,7 +61,7 @@ class CaddyManager {
     respond @options 204
 ${phpConfig}
     # Enable compression (dynamic fallback)
-    encode zstd gzip
+    encode gzip
 
     # SPA fallback: serve index.html for any non-existing file
     # This supports client-side routing (React Router, etc.)
@@ -74,7 +74,7 @@ ${phpConfig}
     
     # Enable caching headers for static assets
     @static {
-        path *.jpg *.jpeg *.png *.gif *.ico *.css *.js *.mjs *.svg *.woff *.woff2 *.ttf *.eot
+        path_regexp static \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
     }
     header @static Cache-Control "public, max-age=31536000"
 
@@ -130,7 +130,7 @@ ${phpConfig}
     respond @options 204
 ${phpConfig}
     # Enable compression (dynamic fallback)
-    encode zstd gzip
+    encode gzip
 
     # File server with pre-compressed file support (br first, then gzip)
     file_server {
@@ -139,7 +139,7 @@ ${phpConfig}
     
     # Enable caching headers for static assets
     @static {
-        path *.jpg *.jpeg *.png *.gif *.ico *.css *.js *.mjs *.svg *.woff *.woff2 *.ttf *.eot
+        path_regexp static \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
     }
     header @static Cache-Control "public, max-age=31536000"
 
@@ -202,7 +202,7 @@ ${phpConfig}
     }
 
     # Enable compression (dynamic fallback)
-    encode zstd gzip
+    encode gzip
 
     # File server with pre-compressed file support (br first, then gzip)
     file_server {
@@ -211,7 +211,7 @@ ${phpConfig}
 
     # Enable caching headers for static assets
     @static {
-        path *.jpg *.jpeg *.png *.gif *.ico *.css *.js *.mjs *.svg *.woff *.woff2 *.ttf *.eot
+        path_regexp static \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
     }
     header @static Cache-Control "public, max-age=31536000"
 
@@ -316,7 +316,13 @@ ${phpConfig}
         header Access-Control-Allow-Headers *
 ${phpBlock}
         # Enable compression (dynamic fallback)
-        encode zstd gzip
+        encode gzip
+        
+        # Enable caching headers for static assets
+        @static_${subdirId} {
+            path_regexp static_${subdirId} \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+        }
+        header @static_${subdirId} Cache-Control "public, max-age=31536000"
         
         # SPA fallback: serve index.html for any non-existing file
         try_files {path} /index.html
@@ -350,7 +356,13 @@ ${phpBlock}
         header Access-Control-Allow-Headers *
 ${phpBlock}
         # Enable compression (dynamic fallback)
-        encode zstd gzip
+        encode gzip
+        
+        # Enable caching headers for static assets
+        @static_${subdirId} {
+            path_regexp static_${subdirId} \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+        }
+        header @static_${subdirId} Cache-Control "public, max-age=31536000"
         
         # File server with pre-compressed file support (br first, then gzip)
         file_server {
