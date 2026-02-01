@@ -72,11 +72,15 @@ ${phpConfig}
         precompressed br gzip
     }
     
-    # Enable caching headers for static assets
-    @static {
-        path_regexp static \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+    # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
+    # Default 2-day cache for all responses (covers directory URLs serving index.html)
+    header Cache-Control "public, max-age=172800"
+    
+    # Override with 15-day cache for versioned assets (js/css/fonts/images)
+    @versioned_assets {
+        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
-    header @static Cache-Control "public, max-age=31536000"
+    header @versioned_assets Cache-Control "public, max-age=1296000"
 
     # Custom error pages
     handle_errors {
@@ -137,11 +141,15 @@ ${phpConfig}
         precompressed br gzip
     }
     
-    # Enable caching headers for static assets
-    @static {
-        path_regexp static \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+    # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
+    # Default 2-day cache for all responses (covers directory URLs serving index.html)
+    header Cache-Control "public, max-age=172800"
+    
+    # Override with 15-day cache for versioned assets (js/css/fonts/images)
+    @versioned_assets {
+        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
-    header @static Cache-Control "public, max-age=31536000"
+    header @versioned_assets Cache-Control "public, max-age=1296000"
 
     # Custom error pages
     handle_errors {
@@ -209,11 +217,15 @@ ${phpConfig}
         precompressed br gzip
     }
 
-    # Enable caching headers for static assets
-    @static {
-        path_regexp static \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+    # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
+    # Default 2-day cache for all responses (covers directory URLs serving index.html)
+    header Cache-Control "public, max-age=172800"
+    
+    # Override with 15-day cache for versioned assets (js/css/fonts/images)
+    @versioned_assets {
+        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
-    header @static Cache-Control "public, max-age=31536000"
+    header @versioned_assets Cache-Control "public, max-age=1296000"
 
     # Custom error pages
     handle_errors {
@@ -318,11 +330,15 @@ ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip
         
-        # Enable caching headers for static assets
-        @static_${subdirId} {
-            path_regexp static_${subdirId} \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+        # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
+        # Default 2-day cache for all responses (covers SPA routes serving index.html)
+        header Cache-Control "public, max-age=172800"
+        
+        # Override with 15-day cache for versioned assets (js/css/fonts/images)
+        @versioned_${subdirId} {
+            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
-        header @static_${subdirId} Cache-Control "public, max-age=31536000"
+        header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
         # SPA fallback: serve index.html for any non-existing file
         try_files {path} /index.html
@@ -358,11 +374,15 @@ ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip
         
-        # Enable caching headers for static assets
-        @static_${subdirId} {
-            path_regexp static_${subdirId} \.(html|json|xml|txt|md|jpg|jpeg|png|gif|ico|css|js|mjs|svg|woff|woff2|ttf|eot)$
+        # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
+        # Default 2-day cache for all responses (covers directory URLs serving index.html)
+        header Cache-Control "public, max-age=172800"
+        
+        # Override with 15-day cache for versioned assets (js/css/fonts/images)
+        @versioned_${subdirId} {
+            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
-        header @static_${subdirId} Cache-Control "public, max-age=31536000"
+        header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
         # File server with pre-compressed file support (br first, then gzip)
         file_server {
