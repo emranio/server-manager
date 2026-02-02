@@ -26,11 +26,12 @@ export default async function resetWpPassword() {
                         return 'Domain name is required';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             }
         ]);
 
-        const domain = domainAnswer.domain.trim();
+        const domain = domainAnswer.domain;
         const primaryKey = generatePrimaryKey(domain);
         const site = siteManager.getSite(primaryKey);
 
@@ -59,11 +60,12 @@ export default async function resetWpPassword() {
                         return 'Username or email is required';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             }
         ]);
 
-        const userIdentifier = userAnswer.userIdentifier.trim();
+        const userIdentifier = userAnswer.userIdentifier;
 
         // Confirm action
         const confirmAnswer = await inquirer.prompt([

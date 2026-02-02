@@ -61,7 +61,8 @@ export default async function addSite() {
                         return 'Invalid domain format. Use domain.tld or domain.tld/path format.';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             },
             {
                 type: 'confirm',
@@ -84,14 +85,16 @@ export default async function addSite() {
                         return 'Invalid format. Use host:port (e.g., localhost:3000)';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             },
             {
                 type: 'input',
                 name: 'corsOrigin',
-                message: 'Enter CORS origin (leave empty for * to allow all):',
-                default: '*',
-                when: (answers) => answers.type === 'proxy'
+                message: 'Enter CORS origin (leave empty to skip CORS, or * to allow all):',
+                default: '',
+                when: (answers) => answers.type === 'proxy',
+                filter: (input) => input.trim()
             }
         ]);
 
@@ -100,7 +103,7 @@ export default async function addSite() {
         domain = answers.domain;
         const enablePhp = answers.enablePhp || false;
         const proxyAddress = answers.proxyAddress || null;
-        const corsOrigin = answers.corsOrigin || '*';
+        const corsOrigin = answers.corsOrigin || '';
         parsedDomain = parseDomain(domain);
         primaryKey = generatePrimaryKey(domain);
 
@@ -216,7 +219,7 @@ export default async function addSite() {
                 status: 'published',
                 isSubdirectory: parsedDomain.isSubdir,
                 ...((type === 'site' || type === 'react') && { enablePhp }),
-                ...(type === 'proxy' && { proxyAddress, corsOrigin }),
+                ...(type === 'proxy' && { proxyAddress, ...(corsOrigin && { corsOrigin }) }),
                 ...(parsedDomain.isSubdir && {
                     parentDomain: parsedDomain.mainDomain,
                     subdirectory: parsedDomain.subdir
@@ -249,7 +252,9 @@ export default async function addSite() {
 
             if (type === 'proxy') {
                 successDetails['Proxy Address'] = proxyAddress;
-                successDetails['CORS Origin'] = corsOrigin;
+                if (corsOrigin) {
+                    successDetails['CORS Origin'] = corsOrigin;
+                }
             }
 
             if (type === 'wp' && wpDetails) {

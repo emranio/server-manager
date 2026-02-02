@@ -29,7 +29,8 @@ export default async function removeSite() {
                         return 'Domain name is required';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             },
             {
                 type: 'confirm',

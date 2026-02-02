@@ -250,17 +250,14 @@ ${phpConfig}
      * Generate Caddy configuration for a proxy
      * @param {string} domain - Domain name
      * @param {string} proxyAddress - Proxy forward address (e.g., localhost:3000)
-     * @param {string} corsOrigin - CORS origin (default: *)
+     * @param {string} corsOrigin - CORS origin (optional, empty string to skip CORS)
      * @returns {string} Caddy configuration\n     */
-    generateProxyConfig(domain, proxyAddress, corsOrigin = '*') {
+    generateProxyConfig(domain, proxyAddress, corsOrigin = '') {
         const tlsInternal = process.env.TLS_INTERNAL === 'true';
         const tlsConfig = tlsInternal ? '\n    tls internal' : '';
-        return `https://${domain} {
-    bind 0.0.0.0${tlsConfig}
-
-    # Enable gzip compression
-    encode gzip zstd
-
+        
+        // Only add CORS headers if corsOrigin is provided
+        const corsBlock = corsOrigin ? `
     # CORS headers
     header Access-Control-Allow-Origin ${corsOrigin}
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
@@ -272,6 +269,14 @@ ${phpConfig}
     }
     respond @options 204
 
+` : '';
+        
+        return `https://${domain} {
+    bind 0.0.0.0${tlsConfig}
+
+    # Enable gzip compression
+    encode gzip zstd
+${corsBlock}
     # Reverse proxy to the service
     reverse_proxy http://${proxyAddress}
 }
@@ -478,7 +483,7 @@ ${phpBlock}
      * @returns {string} Path to created config file
      */
     createConfig(primaryKey, domain, type, rootPath, options = {}) {
-        const { enablePhp = false, proxyAddress = null, corsOrigin = '*' } = options;
+        const { enablePhp = false, proxyAddress = null, corsOrigin = '' } = options;
         const parsed = parseDomain(domain);
 
         // For subdirectory sites, update parent config instead of creating new file

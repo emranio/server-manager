@@ -38,7 +38,8 @@ export default async function managePhp() {
                         return 'Domain name is required';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             }
         ]);
 

@@ -28,7 +28,8 @@ export default async function siteInfo() {
                             return 'Domain name is required';
                         }
                         return true;
-                    }
+                    },
+                    filter: (input) => input.trim()
                 }
             ]);
             domain = answers.domain;

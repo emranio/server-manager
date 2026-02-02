@@ -35,7 +35,8 @@ export default async function manageCors() {
                         return 'Domain name is required';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             },
             {
                 type: 'input',
@@ -48,7 +49,8 @@ export default async function manageCors() {
                         return 'CORS origin is required';
                     }
                     return true;
-                }
+                },
+                filter: (input) => input.trim()
             }
         ]);
 
