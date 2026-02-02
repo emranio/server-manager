@@ -76,18 +76,27 @@ export default async function manageCors() {
         let config = fs.readFileSync(configPath, 'utf8');
 
         if (action === 'add') {
-            // Update or add CORS header
-            const corsHeaderPattern = /header Access-Control-Allow-Origin .+/;
+            // Check if CORS block exists using markers
+            const corsBlockPattern = /# \[CORS:START\][\s\S]*?# \[CORS:END\]/;
             
-            if (corsHeaderPattern.test(config)) {
-                // Update existing CORS header
-                config = config.replace(corsHeaderPattern, `header Access-Control-Allow-Origin ${corsOrigin}`);
+            if (corsBlockPattern.test(config)) {
+                // Update existing CORS header within the marked block
+                config = config.replace(
+                    /(# \[CORS:START\]\n\s*# CORS headers\n\s*)header Access-Control-Allow-Origin [^\n]+/,
+                    `$1header Access-Control-Allow-Origin ${corsOrigin}`
+                );
                 console.log(chalk.green('✓ Updated CORS header'));
             } else {
-                // Add CORS headers block after tls internal
-                const tlsPattern = /(tls internal\n)/;
-                const corsBlock = `    encode gzip
-
+                // Check for legacy CORS (without markers) and update
+                const legacyCorsPattern = /header Access-Control-Allow-Origin .+/;
+                if (legacyCorsPattern.test(config)) {
+                    config = config.replace(legacyCorsPattern, `header Access-Control-Allow-Origin ${corsOrigin}`);
+                    console.log(chalk.green('✓ Updated CORS header (legacy format)'));
+                } else {
+                    // Add CORS headers block with markers after encode gzip or bind
+                    const insertPattern = /(encode gzip[^\n]*\n)/;
+                    const corsBlock = `$1
+    # [CORS:START]
     # CORS headers
     header Access-Control-Allow-Origin ${corsOrigin}
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
@@ -98,21 +107,24 @@ export default async function manageCors() {
         method OPTIONS
     }
     respond @options 204
+    # [CORS:END]
 
 `;
-                config = config.replace(tlsPattern, `$1${corsBlock}`);
-                console.log(chalk.green('✓ Added CORS headers'));
+                    config = config.replace(insertPattern, corsBlock);
+                    console.log(chalk.green('✓ Added CORS headers'));
+                }
             }
 
             // Update site data
             siteManager.updateSite(primaryKey, { corsOrigin });
             logger.info('CORS added/updated', { domain, corsOrigin });
         } else {
-            // Remove CORS headers
-            const corsBlockPattern = /\n?\s*# CORS headers[\s\S]*?respond @options 204\n*/;
+            // Remove CORS headers using markers
+            const corsBlockPattern = /\n?\s*# \[CORS:START\][\s\S]*?# \[CORS:END\]\n*/g;
             config = config.replace(corsBlockPattern, '\n');
             
-            // Also remove standalone header if exists
+            // Also remove legacy CORS headers (without markers) if they exist
+            config = config.replace(/\n?\s*# CORS headers[\s\S]*?respond @options 204\n*/g, '\n');
             config = config.replace(/\s*header Access-Control-Allow-Origin .+\n/g, '');
             config = config.replace(/\s*header Access-Control-Allow-Methods .+\n/g, '');
             config = config.replace(/\s*header Access-Control-Allow-Headers .+\n/g, '');

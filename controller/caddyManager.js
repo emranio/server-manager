@@ -39,8 +39,10 @@ class CaddyManager {
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
         const tlsInternal = process.env.TLS_INTERNAL === 'true';
         const phpConfig = enablePhp ? `
+    # [PHP:START]
     # PHP-FPM support
     php_fastcgi ${phpFastcgiPath}
+    # [PHP:END]
 ` : '';
         const tlsConfig = tlsInternal ? '\n    tls internal' : '';
 
@@ -49,6 +51,7 @@ class CaddyManager {
     root * ${rootPath}
     encode gzip
 
+    # [CORS:START]
     # CORS headers
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
@@ -59,6 +62,7 @@ class CaddyManager {
         method OPTIONS
     }
     respond @options 204
+    # [CORS:END]
 ${phpConfig}
     # Enable compression (dynamic fallback)
     encode gzip
@@ -112,8 +116,10 @@ ${phpConfig}
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
         const tlsInternal = process.env.TLS_INTERNAL === 'true';
         const phpConfig = enablePhp ? `
+    # [PHP:START]
     # PHP-FPM support
     php_fastcgi ${phpFastcgiPath}
+    # [PHP:END]
 ` : '';
         const tlsConfig = tlsInternal ? '\n    tls internal' : '';
 
@@ -122,6 +128,7 @@ ${phpConfig}
     root * ${rootPath}
     encode gzip
 
+    # [CORS:START]
     # CORS headers
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
@@ -132,6 +139,7 @@ ${phpConfig}
         method OPTIONS
     }
     respond @options 204
+    # [CORS:END]
 ${phpConfig}
     # Enable compression (dynamic fallback)
     encode gzip
@@ -185,6 +193,7 @@ ${phpConfig}
 
     root * ${rootPath}
 
+    # [CORS:START]
     # CORS headers
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
@@ -195,6 +204,7 @@ ${phpConfig}
         method OPTIONS
     }
     respond @options 204
+    # [CORS:END]
 
     # Deny access to sensitive files (but allow uploads)
     @forbidden {
@@ -258,6 +268,7 @@ ${phpConfig}
         
         // Only add CORS headers if corsOrigin is provided
         const corsBlock = corsOrigin ? `
+    # [CORS:START]
     # CORS headers
     header Access-Control-Allow-Origin ${corsOrigin}
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
@@ -268,6 +279,7 @@ ${phpConfig}
         method OPTIONS
     }
     respond @options 204
+    # [CORS:END]
 
 ` : '';
         
@@ -299,6 +311,7 @@ ${corsBlock}
 
         if (type === 'proxy') {
             return `
+    # [SUBDIR:${subdir}:START]
     # Subdirectory Proxy: /${subdir}
     # Auto redirect to add trailing slash for directory access
     @subdir_${subdirId}_notrail {
@@ -309,14 +322,18 @@ ${corsBlock}
     handle_path /${subdir}/* {
         reverse_proxy http://${proxyAddress}
     }
+    # [SUBDIR:${subdir}:END]
 `;
         } else if (type === 'react') {
             // Static React site with SPA fallback
             const phpBlock = enablePhp ? `
+        # [PHP:START]
         # PHP-FPM support
         php_fastcgi ${phpFastcgiPath}
+        # [PHP:END]
 ` : '';
             return `
+    # [SUBDIR:${subdir}:START]
     # Subdirectory React SPA: /${subdir}
     # Auto redirect to add trailing slash for directory access
     @subdir_${subdirId}_notrail {
@@ -327,10 +344,12 @@ ${corsBlock}
     handle_path /${subdir}/* {
         root * ${rootPath}
         
+        # [CORS:START]
         # CORS headers
         header Access-Control-Allow-Origin *
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
+        # [CORS:END]
 ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip
@@ -353,14 +372,18 @@ ${phpBlock}
             precompressed br gzip
         }
     }
+    # [SUBDIR:${subdir}:END]
 `;
         } else {
             // Regular site type - respect enablePhp option
             const phpBlock = enablePhp ? `
+        # [PHP:START]
         # PHP-FPM support
         php_fastcgi ${phpFastcgiPath}
+        # [PHP:END]
 ` : '';
             return `
+    # [SUBDIR:${subdir}:START]
     # Subdirectory: /${subdir}
     # Auto redirect to add trailing slash for directory access
     @subdir_${subdirId}_notrail {
@@ -371,10 +394,12 @@ ${phpBlock}
     handle_path /${subdir}/* {
         root * ${rootPath}
         
+        # [CORS:START]
         # CORS headers
         header Access-Control-Allow-Origin *
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
+        # [CORS:END]
 ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip
@@ -394,6 +419,7 @@ ${phpBlock}
             precompressed br gzip
         }
     }
+    # [SUBDIR:${subdir}:END]
 `;
         }
     }
@@ -457,13 +483,15 @@ ${phpBlock}
             // Read existing config
             let config = fs.readFileSync(parentConfigFile, 'utf8');
 
-            // Find and remove subdirectory block (handles site, wp, and react types)
+            // Find and remove subdirectory block using markers
+            // Escape special regex characters in subdir
+            const escapedSubdir = subdir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const subdirPattern = new RegExp(
-                `\\s*# Subdirectory(?:\\sReact SPA)?: /${subdir}\\s*route /${subdir}/\\* \\{[^}]*\\}\\s*`,
-                'gs'
+                `\\n?\\s*# \\[SUBDIR:${escapedSubdir}:START\\][\\s\\S]*?# \\[SUBDIR:${escapedSubdir}:END\\]\\n?`,
+                'g'
             );
 
-            config = config.replace(subdirPattern, '');
+            config = config.replace(subdirPattern, '\n');
 
             // Write updated config
             fs.writeFileSync(parentConfigFile, config, 'utf8');

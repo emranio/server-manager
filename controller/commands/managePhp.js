@@ -73,19 +73,29 @@ export default async function managePhp() {
         let config = fs.readFileSync(configPath, 'utf8');
 
         if (action === 'add') {
-            // Check if PHP is already enabled
-            if (config.includes('php_fastcgi')) {
+            // Check if PHP is already enabled (check for markers or legacy format)
+            if (config.includes('# [PHP:START]') || config.includes('php_fastcgi')) {
                 displayError('PHP already enabled', { message: 'PHP support is already enabled for this site' });
                 return;
             }
 
-            // Add PHP-FPM support before file_server
+            // Add PHP-FPM support with markers before file_server or encode gzip
             const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
             const phpBlock = `
+    # [PHP:START]
     # PHP-FPM support
     php_fastcgi ${phpFastcgiPath}
+    # [PHP:END]
 `;
-            config = config.replace(/(\n\s*# File server)/i, `${phpBlock}$1`);
+            // Try to insert before "# File server" or "# Enable compression"
+            if (config.includes('# File server')) {
+                config = config.replace(/(\n\s*# File server)/i, `${phpBlock}$1`);
+            } else if (config.includes('# Enable compression')) {
+                config = config.replace(/(\n\s*# Enable compression)/i, `${phpBlock}$1`);
+            } else {
+                // Fallback: insert before file_server directive
+                config = config.replace(/(\n\s*file_server)/i, `${phpBlock}$1`);
+            }
             
             // Update site data
             siteManager.updateSite(primaryKey, { enablePhp: true });
@@ -93,15 +103,18 @@ export default async function managePhp() {
             
             console.log(chalk.green('✓ PHP support added'));
         } else {
-            // Remove PHP-FPM support
-            const phpBlockPattern = /\n?\s*# PHP-FPM support[\s\S]*?php_fastcgi [^\n]+\n*/;
+            // Remove PHP-FPM support - try markers first, then legacy format
+            const phpBlockMarkerPattern = /\n?\s*# \[PHP:START\][\s\S]*?# \[PHP:END\]\n*/g;
+            const phpBlockLegacyPattern = /\n?\s*# PHP-FPM support[\s\S]*?php_fastcgi [^\n]+\n*/g;
             
-            if (!phpBlockPattern.test(config)) {
+            if (!phpBlockMarkerPattern.test(config) && !phpBlockLegacyPattern.test(config)) {
                 displayError('PHP not enabled', { message: 'PHP support is not enabled for this site' });
                 return;
             }
             
-            config = config.replace(phpBlockPattern, '\n');
+            // Remove both marker-based and legacy PHP blocks
+            config = config.replace(phpBlockMarkerPattern, '\n');
+            config = config.replace(phpBlockLegacyPattern, '\n');
             
             // Update site data
             siteManager.updateSite(primaryKey, { enablePhp: false });
