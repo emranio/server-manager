@@ -5,5 +5,7 @@ www/*
 caddy/*
 controller/sites.json
 .DS_Store
+.sudo_as_admin_successful
+.wp-cli/
 # keep all .gitkeep files
 !**/.gitkeep
