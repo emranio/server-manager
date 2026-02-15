@@ -54,5 +54,20 @@ else
     echo "❌ Error: $WWW_DIR not found."
 fi
 
+# 4. Force FS_METHOD direct in wp-config.php 
+# This tells WordPress to not ask for FTP credentials even if ownership looks mismatched
+echo "🔧 Checking wp-config.php files for FS_METHOD..."
+if [ -d "$WWW_DIR" ]; then
+    find "$WWW_DIR" -maxdepth 4 -name "wp-config.php" -print0 | while IFS= read -r -d '' config_file; do
+        if ! grep -q "FS_METHOD" "$config_file"; then
+            echo "→ Adding FS_METHOD direct to $config_file"
+            # Insert before the "stop editing" line
+            sed -i "/\/\* That's all, stop editing! Happy publishing. \*\//i define( 'FS_METHOD', 'direct' );" "$config_file"
+        else
+             echo "→ FS_METHOD already present in $config_file"
+        fi
+    done
+fi
+
 echo ""
 echo "Note: If you just added yourself to the group, you may need to log out and back in."
