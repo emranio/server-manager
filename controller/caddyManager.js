@@ -374,6 +374,60 @@ ${phpBlock}
     }
     # [SUBDIR:${subdir}:END]
 `;
+        } else if (type === 'wp') {
+            // WordPress subdirectory site
+            return `
+    # [SUBDIR:${subdir}:START]
+    # Subdirectory: /${subdir}
+    # Auto redirect to add trailing slash for directory access
+    @subdir_${subdirId}_notrail {
+        path /${subdir}
+    }
+    redir @subdir_${subdirId}_notrail /${subdir}/ 308
+    
+    handle_path /${subdir}/* {
+        root * ${rootPath}
+        
+        # [CORS:START]
+        # CORS headers
+        header Access-Control-Allow-Origin *
+        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers *
+        # [CORS:END]
+
+        # Deny access to sensitive files (but allow uploads)
+        @forbidden_${subdirId} {
+            path *.sql .htaccess .env wp-config.php
+            path */.*
+            not path /wp-content/uploads/*
+        }
+        respond @forbidden_${subdirId} 403
+
+        # PHP-FPM configuration with WordPress support
+        php_fastcgi ${phpFastcgiPath} {
+            try_files {path} {path}/index.php /index.php
+        }
+
+        # Enable compression (dynamic fallback)
+        encode gzip
+        
+        # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
+        # Default 2-day cache for all responses (covers directory URLs serving index.html)
+        header Cache-Control "public, max-age=172800"
+        
+        # Override with 15-day cache for versioned assets (js/css/fonts/images)
+        @versioned_${subdirId} {
+            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        }
+        header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
+        
+        # File server with pre-compressed file support (br first, then gzip)
+        file_server {
+            precompressed br gzip
+        }
+    }
+    # [SUBDIR:${subdir}:END]
+`;
         } else {
             // Regular site type - respect enablePhp option
             const phpBlock = enablePhp ? `
@@ -435,7 +489,8 @@ ${phpBlock}
      * @returns {boolean} Success status
      */
     addSubdirToParentConfig(parentKey, mainDomain, subdir, type, rootPath, options = {}) {
-        const parentConfigFile = this.getConfigPath(parentKey);
+        const { group = null } = options;
+        const parentConfigFile = this.getConfigPath(parentKey, group);
 
         if (!fs.existsSync(parentConfigFile)) {
             throw new Error(`Parent config file not found: ${parentConfigFile}`);
@@ -472,8 +527,8 @@ ${phpBlock}
      * @param {string} subdir - Subdirectory path to remove
      * @returns {boolean} Success status
      */
-    removeSubdirFromParentConfig(parentKey, subdir) {
-        const parentConfigFile = this.getConfigPath(parentKey);
+    removeSubdirFromParentConfig(parentKey, subdir, group = null) {
+        const parentConfigFile = this.getConfigPath(parentKey, group);
 
         if (!fs.existsSync(parentConfigFile)) {
             return false; // Parent config doesn't exist
@@ -511,18 +566,19 @@ ${phpBlock}
      * @returns {string} Path to created config file
      */
     createConfig(primaryKey, domain, type, rootPath, options = {}) {
-        const { enablePhp = false, proxyAddress = null, corsOrigin = '' } = options;
+        const { enablePhp = false, proxyAddress = null, corsOrigin = '', group = null } = options;
         const parsed = parseDomain(domain);
 
         // For subdirectory sites, update parent config instead of creating new file
         if (parsed.isSubdir) {
             const parentKey = generatePrimaryKey(parsed.mainDomain);
             this.addSubdirToParentConfig(parentKey, parsed.mainDomain, parsed.subdir, type, rootPath, options);
-            return this.getConfigPath(parentKey); // Return parent config path
+            return this.getConfigPath(parentKey, group); // Return parent config path
         }
 
         // For regular domains, create a new config file
-        const configFile = path.join(this.caddyDir, `${primaryKey}.caddy`);
+        const configFileName = group ? `${group}__${primaryKey}.caddy` : `${primaryKey}.caddy`;
+        const configFile = path.join(this.caddyDir, configFileName);
 
         let config;
         if (type === 'site') {
@@ -551,18 +607,19 @@ ${phpBlock}
      * @param {string} domain - Domain name (to check if subdirectory)
      * @returns {boolean} True if file/config was removed
      */
-    removeConfig(primaryKey, domain = null) {
+    removeConfig(primaryKey, domain = null, group = null) {
         // If domain is provided and it's a subdirectory, remove from parent config
         if (domain) {
             const parsed = parseDomain(domain);
             if (parsed.isSubdir) {
                 const parentKey = generatePrimaryKey(parsed.mainDomain);
-                return this.removeSubdirFromParentConfig(parentKey, parsed.subdir);
+                return this.removeSubdirFromParentConfig(parentKey, parsed.subdir, group);
             }
         }
 
         // For regular domains, remove the config file
-        const configFile = path.join(this.caddyDir, `${primaryKey}.caddy`);
+        const configFileName = group ? `${group}__${primaryKey}.caddy` : `${primaryKey}.caddy`;
+        const configFile = path.join(this.caddyDir, configFileName);
 
         try {
             if (fs.existsSync(configFile)) {
@@ -580,18 +637,21 @@ ${phpBlock}
      * @param {string} primaryKey - Primary key for the site
      * @returns {boolean} True if config exists
      */
-    configExists(primaryKey) {
-        const configFile = path.join(this.caddyDir, `${primaryKey}.caddy`);
+    configExists(primaryKey, group = null) {
+        const configFileName = group ? `${group}__${primaryKey}.caddy` : `${primaryKey}.caddy`;
+        const configFile = path.join(this.caddyDir, configFileName);
         return fs.existsSync(configFile);
     }
 
     /**
      * Get path to config file
      * @param {string} primaryKey - Primary key for the site
+     * @param {string|null} group - Optional group name
      * @returns {string} Path to config file
      */
-    getConfigPath(primaryKey) {
-        return path.join(this.caddyDir, `${primaryKey}.caddy`);
+    getConfigPath(primaryKey, group = null) {
+        const configFileName = group ? `${group}__${primaryKey}.caddy` : `${primaryKey}.caddy`;
+        return path.join(this.caddyDir, configFileName);
     }
 }
 
