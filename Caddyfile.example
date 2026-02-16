@@ -11,6 +11,7 @@
 }
 
 # Import all site configurations from the Server directory
+# (grouped sites use GROUP__site.caddy prefix naming, so a single glob catches everything)
 import /Users/MacUser/Server/caddy/*.caddy
 
 # You can also add other global configurations here
