@@ -101,12 +101,6 @@ export default async function manageCors() {
     header Access-Control-Allow-Origin ${corsOrigin}
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
-
-    # Handle OPTIONS preflight requests
-    @options {
-        method OPTIONS
-    }
-    respond @options 204
     # [CORS:END]
 
 `;
@@ -123,8 +117,10 @@ export default async function manageCors() {
             const corsBlockPattern = /\n?\s*# \[CORS:START\][\s\S]*?# \[CORS:END\]\n*/g;
             config = config.replace(corsBlockPattern, '\n');
             
-            // Also remove legacy CORS headers (without markers) if they exist
-            config = config.replace(/\n?\s*# CORS headers[\s\S]*?respond @options 204\n*/g, '\n');
+            // Also remove legacy CORS/preflight blocks (without markers) if they exist
+            config = config.replace(/\n?\s*# CORS headers\n(?:\s*header Access-Control-Allow-Origin .+\n)?(?:\s*header Access-Control-Allow-Methods .+\n)?(?:\s*header Access-Control-Allow-Headers .+\n)?\s*(?:# Handle OPTIONS preflight requests\n)?\s*(?:@options\s*\{[\s\S]*?\}\n\s*respond @options 204\n?)?/g, '\n');
+            config = config.replace(/\n?\s*# Handle OPTIONS preflight requests\n/g, '\n');
+            config = config.replace(/\n?\s*@options\s*\{[\s\S]*?\}\n\s*respond @options 204\n*/g, '\n');
             config = config.replace(/\s*header Access-Control-Allow-Origin .+\n/g, '');
             config = config.replace(/\s*header Access-Control-Allow-Methods .+\n/g, '');
             config = config.replace(/\s*header Access-Control-Allow-Headers .+\n/g, '');

@@ -41,7 +41,9 @@ class CaddyManager {
         const phpConfig = enablePhp ? `
     # [PHP:START]
     # PHP-FPM support
-    php_fastcgi ${phpFastcgiPath}
+    php_fastcgi ${phpFastcgiPath} {
+        try_files {path} {path}/index.php
+    }
     # [PHP:END]
 ` : '';
         const tlsConfig = tlsInternal ? '\n    tls internal' : '';
@@ -56,12 +58,6 @@ class CaddyManager {
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
-
-    # Handle OPTIONS preflight requests
-    @options {
-        method OPTIONS
-    }
-    respond @options 204
     # [CORS:END]
 ${phpConfig}
     # Enable compression (dynamic fallback)
@@ -82,7 +78,7 @@ ${phpConfig}
     
     # Override with 15-day cache for versioned assets (js/css/fonts/images)
     @versioned_assets {
-        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        path_regexp versioned \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
     header @versioned_assets Cache-Control "public, max-age=1296000"
 
@@ -118,7 +114,9 @@ ${phpConfig}
         const phpConfig = enablePhp ? `
     # [PHP:START]
     # PHP-FPM support
-    php_fastcgi ${phpFastcgiPath}
+    php_fastcgi ${phpFastcgiPath} {
+        try_files {path} {path}/index.php
+    }
     # [PHP:END]
 ` : '';
         const tlsConfig = tlsInternal ? '\n    tls internal' : '';
@@ -133,12 +131,6 @@ ${phpConfig}
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
-
-    # Handle OPTIONS preflight requests
-    @options {
-        method OPTIONS
-    }
-    respond @options 204
     # [CORS:END]
 ${phpConfig}
     # Enable compression (dynamic fallback)
@@ -148,14 +140,10 @@ ${phpConfig}
     file_server {
         precompressed br gzip
     }
-    
-    # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
-    # Default 2-day cache for all responses (covers directory URLs serving index.html)
-    header Cache-Control "public, max-age=172800"
-    
-    # Override with 15-day cache for versioned assets (js/css/fonts/images)
+
+    # Cache only static assets — PHP responses manage their own Cache-Control headers
     @versioned_assets {
-        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        path_regexp versioned \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
     header @versioned_assets Cache-Control "public, max-age=1296000"
 
@@ -198,12 +186,6 @@ ${phpConfig}
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
-
-    # Handle OPTIONS preflight requests
-    @options {
-        method OPTIONS
-    }
-    respond @options 204
     # [CORS:END]
 
     # Deny access to sensitive files (but allow uploads)
@@ -227,13 +209,10 @@ ${phpConfig}
         precompressed br gzip
     }
 
-    # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
-    # Default 2-day cache for all responses (covers directory URLs serving index.html)
-    header Cache-Control "public, max-age=172800"
-    
+    # Cache only static assets — PHP/WordPress responses manage their own Cache-Control headers
     # Override with 15-day cache for versioned assets (js/css/fonts/images)
     @versioned_assets {
-        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        path_regexp versioned \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
     header @versioned_assets Cache-Control "public, max-age=1296000"
 
@@ -273,12 +252,6 @@ ${phpConfig}
     header Access-Control-Allow-Origin ${corsOrigin}
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
-
-    # Handle OPTIONS preflight requests
-    @options {
-        method OPTIONS
-    }
-    respond @options 204
     # [CORS:END]
 
 ` : '';
@@ -329,7 +302,9 @@ ${corsBlock}
             const phpBlock = enablePhp ? `
         # [PHP:START]
         # PHP-FPM support
-        php_fastcgi ${phpFastcgiPath}
+        php_fastcgi ${phpFastcgiPath} {
+            try_files {path} {path}/index.php
+        }
         # [PHP:END]
 ` : '';
             return `
@@ -360,7 +335,7 @@ ${phpBlock}
         
         # Override with 15-day cache for versioned assets (js/css/fonts/images)
         @versioned_${subdirId} {
-            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            path_regexp versioned_${subdirId} \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
         header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
@@ -410,14 +385,10 @@ ${phpBlock}
 
         # Enable compression (dynamic fallback)
         encode gzip
-        
-        # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
-        # Default 2-day cache for all responses (covers directory URLs serving index.html)
-        header Cache-Control "public, max-age=172800"
-        
-        # Override with 15-day cache for versioned assets (js/css/fonts/images)
+
+        # Cache only static assets — PHP/WordPress responses manage their own Cache-Control headers
         @versioned_${subdirId} {
-            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            path_regexp versioned_${subdirId} \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
         header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
@@ -433,7 +404,9 @@ ${phpBlock}
             const phpBlock = enablePhp ? `
         # [PHP:START]
         # PHP-FPM support
-        php_fastcgi ${phpFastcgiPath}
+        php_fastcgi ${phpFastcgiPath} {
+            try_files {path} {path}/index.php
+        }
         # [PHP:END]
 ` : '';
             return `
@@ -457,14 +430,10 @@ ${phpBlock}
 ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip
-        
-        # Cache headers: 2 days for HTML/directory index, 15 days for versioned assets
-        # Default 2-day cache for all responses (covers directory URLs serving index.html)
-        header Cache-Control "public, max-age=172800"
-        
-        # Override with 15-day cache for versioned assets (js/css/fonts/images)
+
+        # Cache only static assets — PHP responses manage their own Cache-Control headers
         @versioned_${subdirId} {
-            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            path_regexp versioned_${subdirId} \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
         header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         

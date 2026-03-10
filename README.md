@@ -363,7 +363,6 @@ Configuration files are stored in the `caddy/` directory:
 **Proxy Config Features:**
 - Reverse proxy to upstream service
 - CORS headers
-- OPTIONS request handling
 - Connection pooling
 
 ### Logging

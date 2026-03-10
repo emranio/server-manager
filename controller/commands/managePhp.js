@@ -84,7 +84,9 @@ export default async function managePhp() {
             const phpBlock = `
     # [PHP:START]
     # PHP-FPM support
-    php_fastcgi ${phpFastcgiPath}
+    php_fastcgi ${phpFastcgiPath} {
+        try_files {path} {path}/index.php
+    }
     # [PHP:END]
 `;
             // Try to insert before "# File server" or "# Enable compression"
