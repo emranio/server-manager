@@ -63,7 +63,7 @@ export default async function removeSite() {
 
         // Step 1: Remove Caddy config
         displayStep(stepNum++, totalSteps, 'Removing Caddy configuration...');
-        caddyManager.removeConfig(primaryKey, domain);
+        caddyManager.removeConfig(primaryKey, domain, site.group);
         logger.info('Caddy config removed', { domain, primaryKey });
 
         // Step 2: Remove database (if WordPress)
