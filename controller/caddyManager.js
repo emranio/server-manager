@@ -78,7 +78,7 @@ ${phpConfig}
     
     # Override with 15-day cache for versioned assets (js/css/fonts/images)
     @versioned_assets {
-        path_regexp versioned \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
     header @versioned_assets Cache-Control "public, max-age=1296000"
 
@@ -143,7 +143,7 @@ ${phpConfig}
 
     # Cache only static assets — PHP responses manage their own Cache-Control headers
     @versioned_assets {
-        path_regexp versioned \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
     header @versioned_assets Cache-Control "public, max-age=1296000"
 
@@ -212,7 +212,7 @@ ${phpConfig}
     # Cache only static assets — PHP/WordPress responses manage their own Cache-Control headers
     # Override with 15-day cache for versioned assets (js/css/fonts/images)
     @versioned_assets {
-        path_regexp versioned \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        path_regexp versioned \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
     }
     header @versioned_assets Cache-Control "public, max-age=1296000"
 
@@ -335,7 +335,7 @@ ${phpBlock}
         
         # Override with 15-day cache for versioned assets (js/css/fonts/images)
         @versioned_${subdirId} {
-            path_regexp versioned_${subdirId} \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
         header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
@@ -388,7 +388,7 @@ ${phpBlock}
 
         # Cache only static assets — PHP/WordPress responses manage their own Cache-Control headers
         @versioned_${subdirId} {
-            path_regexp versioned_${subdirId} \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
         header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
@@ -433,7 +433,7 @@ ${phpBlock}
 
         # Cache only static assets — PHP responses manage their own Cache-Control headers
         @versioned_${subdirId} {
-            path_regexp versioned_${subdirId} \\.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            path_regexp versioned_${subdirId} \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
         }
         header @versioned_${subdirId} Cache-Control "public, max-age=1296000"
         
