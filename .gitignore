@@ -9,3 +9,5 @@ controller/sites.json
 .wp-cli/
 # keep all .gitkeep files
 !**/.gitkeep
+bun.lock
+.bash_history
