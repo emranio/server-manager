@@ -58,6 +58,9 @@ class CaddyManager {
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
+    # Handle OPTIONS preflight requests (CORS)
+    @options method OPTIONS
+    respond @options 204
     # [CORS:END]
 ${phpConfig}
     # Enable compression (dynamic fallback)
@@ -131,6 +134,9 @@ ${phpConfig}
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
+    # Handle OPTIONS preflight requests (CORS)
+    @options method OPTIONS
+    respond @options 204
     # [CORS:END]
 ${phpConfig}
     # Enable compression (dynamic fallback)
@@ -186,6 +192,9 @@ ${phpConfig}
     header Access-Control-Allow-Origin *
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
+    # Handle OPTIONS preflight requests (CORS)
+    @options method OPTIONS
+    respond @options 204
     # [CORS:END]
 
     # Deny access to sensitive files (but allow uploads)
@@ -252,6 +261,9 @@ ${phpConfig}
     header Access-Control-Allow-Origin ${corsOrigin}
     header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     header Access-Control-Allow-Headers *
+    # Handle OPTIONS preflight requests (CORS)
+    @options method OPTIONS
+    respond @options 204
     # [CORS:END]
 
 ` : '';
@@ -324,6 +336,9 @@ ${corsBlock}
         header Access-Control-Allow-Origin *
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
+        # Handle OPTIONS preflight requests (CORS)
+        @subdir_${subdirId}_options method OPTIONS
+        respond @subdir_${subdirId}_options 204
         # [CORS:END]
 ${phpBlock}
         # Enable compression (dynamic fallback)
@@ -368,6 +383,9 @@ ${phpBlock}
         header Access-Control-Allow-Origin *
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
+        # Handle OPTIONS preflight requests (CORS)
+        @subdir_${subdirId}_options method OPTIONS
+        respond @subdir_${subdirId}_options 204
         # [CORS:END]
 
         # Deny access to sensitive files (but allow uploads)
@@ -426,6 +444,9 @@ ${phpBlock}
         header Access-Control-Allow-Origin *
         header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
         header Access-Control-Allow-Headers *
+        # Handle OPTIONS preflight requests (CORS)
+        @subdir_${subdirId}_options method OPTIONS
+        respond @subdir_${subdirId}_options 204
         # [CORS:END]
 ${phpBlock}
         # Enable compression (dynamic fallback)
