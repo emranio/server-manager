@@ -45,6 +45,7 @@ export default async function addSite() {
                 choices: [
                     { name: 'Site (HTML/CSS/JS)', value: 'site' },
                     { name: 'Static React Site (SPA with client-side routing)', value: 'react' },
+                    { name: 'Static Next Build (next export / output: \'export\')', value: 'static-next' },
                     { name: 'WordPress Site', value: 'wp' },
                     { name: 'Proxy (Forward to another service)', value: 'proxy' }
                 ]
@@ -221,8 +222,8 @@ export default async function addSite() {
                     fs.mkdirSync(publicPath, { recursive: true });
                 }
                 
-                // Copy welcome.html as index.html for site and react types
-                if (type === 'site' || type === 'react') {
+                // Copy welcome.html as index.html for static site types
+                if (type === 'site' || type === 'react' || type === 'static-next') {
                     const welcomeHtmlPath = path.join(__dirname, '..', 'welcome.html');
                     const indexHtmlPath = path.join(publicPath, 'index.html');
                     
@@ -293,7 +294,7 @@ export default async function addSite() {
             // Display success information
             const successDetails = {
                 'Domain': domain,
-                'Type': type === 'site' ? 'Site' : (type === 'react' ? 'Static React Site' : (type === 'wp' ? 'WordPress' : 'Proxy')),
+                'Type': type === 'site' ? 'Site' : (type === 'react' ? 'Static React Site' : (type === 'static-next' ? 'Static Next Build' : (type === 'wp' ? 'WordPress' : 'Proxy'))),
                 'Group': group || 'none',
                 'Directory': type !== 'proxy' ? sitePath : 'N/A',
                 'Primary Key': primaryKey,

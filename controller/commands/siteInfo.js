@@ -62,7 +62,7 @@ export default async function siteInfo() {
 
         const details = {
             'Domain': site.domain,
-            'Type': site.type === 'site' ? 'Site' : (site.type === 'react' ? 'Static React Site' : (site.type === 'wp' ? 'WordPress' : 'Proxy')),
+            'Type': site.type === 'site' ? 'Site' : (site.type === 'react' ? 'Static React Site' : (site.type === 'static-next' ? 'Static Next Build' : (site.type === 'wp' ? 'WordPress' : 'Proxy'))),
             'Status': statusDisplay,
             'Primary Key': site.primaryKey,
             'Full Path': site.path,

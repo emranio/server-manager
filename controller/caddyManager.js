@@ -105,6 +105,100 @@ ${phpConfig}
     }
 
     /**
+     * Generate Caddy configuration for a Static Next.js Build (next export / output: 'export')
+     * Treats the directory as a static export: clean URLs map to .html files,
+     * /_next/static/* gets immutable long cache, HTML gets short revalidate cache,
+     * service worker (if present) is never cached, and trailing slashes are
+     * canonicalised with 308 redirects.
+     * @param {string} domain - Domain name
+     * @param {string} rootPath - Document root path (the exported `out/` or `public/` folder)
+     * @returns {string} Caddy configuration
+     */
+    generateStaticNextConfig(domain, rootPath) {
+        const tlsInternal = process.env.TLS_INTERNAL === 'true';
+        const tlsConfig = tlsInternal ? '\n    tls internal' : '';
+
+        return `https://${domain} {
+    bind 0.0.0.0${tlsConfig}
+    root * ${rootPath}
+    encode gzip zstd
+
+    # [CORS:START]
+    # CORS headers
+    header Access-Control-Allow-Origin *
+    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    header Access-Control-Allow-Headers *
+    # Handle OPTIONS preflight requests (CORS)
+    @options method OPTIONS
+    respond @options 204
+    # [CORS:END]
+
+    # Canonicalise trailing slashes (except root) -> 308 redirect to clean URL
+    @trailing_slash {
+        path_regexp trailing ^(.+)/$
+    }
+    redir @trailing_slash {re.trailing.1} 308
+
+    # Static Next.js export route resolution:
+    #   /foo            -> foo.html
+    #   /foo/bar        -> foo/bar.html
+    #   /foo/           -> foo/index.html (after trailing slash redirect this is rare)
+    #   otherwise       -> serve the file as-is (assets, /_next/*, etc.)
+    try_files {path}.html {path}/index.html {path}
+
+    # File server with pre-compressed file support (br first, then gzip)
+    file_server {
+        precompressed br gzip
+    }
+
+    # /_next/static/* is content-hashed -> safe to cache forever
+    @next_static path /_next/static/*
+    header @next_static Cache-Control "public, max-age=31536000, immutable"
+
+    # HTML pages -> short cache, must revalidate so deploys are picked up
+    @html {
+        path *.html /
+        path_regexp html_dir ^/[^.]*$
+    }
+    header @html Cache-Control "public, max-age=0, must-revalidate"
+
+    # Service worker (PWA) must never be cached by intermediaries
+    @service_worker path /sw.js /service-worker.js
+    header @service_worker Cache-Control "no-cache"
+
+    # Web app manifest -> short cache
+    @manifest path /manifest.webmanifest /manifest.json
+    header @manifest Cache-Control "public, max-age=300, must-revalidate"
+
+    # Other versioned/static assets (images, fonts, css, js outside /_next/static)
+    @static_assets {
+        path_regexp static_ext \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+        not path /_next/static/*
+        not path /sw.js
+        not path /service-worker.js
+    }
+    header @static_assets Cache-Control "public, max-age=1296000"
+
+    # Custom error pages
+    handle_errors {
+        @404 {
+            expression {http.error.status_code} == 404
+        }
+        rewrite @404 /404.html
+
+        @error {
+            expression {http.error.status_code} >= 400
+        }
+        rewrite @error /error.html
+
+        root * ${path.join(__dirname, '..', 'www')}
+        file_server
+    }
+}
+`;
+    }
+
+    /**
      * Generate Caddy configuration for a site
      * @param {string} domain - Domain name
      * @param {string} rootPath - Document root path
@@ -306,6 +400,72 @@ ${corsBlock}
     
     handle_path /${subdir}/* {
         reverse_proxy http://${proxyAddress}
+    }
+    # [SUBDIR:${subdir}:END]
+`;
+        } else if (type === 'static-next') {
+            // Static Next.js export under a subdirectory.
+            // NOTE: Next.js must be built with `basePath: '/${subdir}'` (and ideally
+            // `assetPrefix`) for asset URLs in the exported HTML to resolve here.
+            return `
+    # [SUBDIR:${subdir}:START]
+    # Subdirectory Static Next.js Build: /${subdir}
+    # Auto redirect to add trailing slash for directory access
+    @subdir_${subdirId}_notrail {
+        path /${subdir}
+    }
+    redir @subdir_${subdirId}_notrail /${subdir}/ 308
+
+    handle_path /${subdir}/* {
+        root * ${rootPath}
+
+        # [CORS:START]
+        # CORS headers
+        header Access-Control-Allow-Origin *
+        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers *
+        # Handle OPTIONS preflight requests (CORS)
+        @subdir_${subdirId}_options method OPTIONS
+        respond @subdir_${subdirId}_options 204
+        # [CORS:END]
+
+        encode gzip zstd
+
+        # Canonicalise trailing slashes within the subdirectory
+        @subdir_${subdirId}_trailing path_regexp subtrail ^(.+)/$
+        redir @subdir_${subdirId}_trailing /${subdir}{re.subtrail.1} 308
+
+        # Static Next export route resolution
+        try_files {path}.html {path}/index.html {path}
+
+        # /_next/static/* immutable
+        @subdir_${subdirId}_next_static path /_next/static/*
+        header @subdir_${subdirId}_next_static Cache-Control "public, max-age=31536000, immutable"
+
+        # HTML short revalidate cache
+        @subdir_${subdirId}_html {
+            path *.html /
+            path_regexp subhtml_dir ^/[^.]*$
+        }
+        header @subdir_${subdirId}_html Cache-Control "public, max-age=0, must-revalidate"
+
+        # Service worker no-cache
+        @subdir_${subdirId}_sw path /sw.js /service-worker.js
+        header @subdir_${subdirId}_sw Cache-Control "no-cache"
+
+        # Other versioned static assets
+        @subdir_${subdirId}_assets {
+            path_regexp subassets \.(css|js|mjs|woff|woff2|ttf|eot|jpg|jpeg|png|gif|ico|svg|webp|avif)$
+            not path /_next/static/*
+            not path /sw.js
+            not path /service-worker.js
+        }
+        header @subdir_${subdirId}_assets Cache-Control "public, max-age=1296000"
+
+        # File server with pre-compressed file support (br first, then gzip)
+        file_server {
+            precompressed br gzip
+        }
     }
     # [SUBDIR:${subdir}:END]
 `;
@@ -575,6 +735,8 @@ ${phpBlock}
             config = this.generateSiteConfig(domain, rootPath, enablePhp);
         } else if (type === 'react') {
             config = this.generateReactConfig(domain, rootPath, enablePhp);
+        } else if (type === 'static-next') {
+            config = this.generateStaticNextConfig(domain, rootPath);
         } else if (type === 'wp') {
             config = this.generateWordPressConfig(domain, rootPath);
         } else if (type === 'proxy') {

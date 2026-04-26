@@ -91,7 +91,7 @@ export default async function removeSite() {
         displaySuccess('Site Removed Successfully!', {
             'Domain': domain,
             'Primary Key': primaryKey,
-            'Type': site.type === 'site' ? 'Site' : (site.type === 'wp' ? 'WordPress' : 'Proxy')
+            'Type': site.type === 'site' ? 'Site' : (site.type === 'react' ? 'Static React Site' : (site.type === 'static-next' ? 'Static Next Build' : (site.type === 'wp' ? 'WordPress' : 'Proxy')))
         });
 
         // Reload Caddy
