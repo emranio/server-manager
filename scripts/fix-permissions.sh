@@ -37,6 +37,9 @@ for USr in "${USERS_TO_ADD[@]}"; do
     fi
 done
 
+# PHP-FPM workers need a restart to pick up fresh supplementary groups.
+PHP_FPM_SERVICES=("php8.2-fpm" "php8.3-fpm")
+
 # 3. Fix directory ownership and permissions
 if [ -d "$WWW_DIR" ]; then
     echo "Setting ownership of contents to $CURRENT_USER:$WEB_GROUP..."
@@ -53,6 +56,16 @@ if [ -d "$WWW_DIR" ]; then
 else
     echo "❌ Error: $WWW_DIR not found."
 fi
+
+echo "🔄 Restarting active PHP-FPM services so they pick up group changes..."
+for service in "${PHP_FPM_SERVICES[@]}"; do
+    if systemctl is-active --quiet "$service"; then
+        echo "→ Restarting $service"
+        sudo systemctl restart "$service"
+    else
+        echo "→ $service is not active, skipping."
+    fi
+done
 
 # 4. Force FS_METHOD direct in wp-config.php 
 # This tells WordPress to not ask for FTP credentials even if ownership looks mismatched
