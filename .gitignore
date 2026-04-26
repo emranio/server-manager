@@ -11,3 +11,6 @@ controller/sites.json
 !**/.gitkeep
 bun.lock
 .bash_history
+.zcompdump*
+.zshrc 
+.cache
