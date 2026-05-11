@@ -29,6 +29,35 @@ class CaddyManager {
     }
 
     /**
+     * Generate a CORS block that works for normal requests and OPTIONS preflight responses.
+     * The preflight handler repeats the headers because respond short-circuits later handlers.
+     * @param {string} corsOrigin - Allowed CORS origin
+     * @param {string} indent - Indentation for the generated Caddyfile block
+     * @param {string} matcherName - Unique Caddy matcher name for OPTIONS requests
+     * @returns {string} Caddy CORS configuration block
+     */
+    generateCorsBlock(corsOrigin = '*', indent = '    ', matcherName = 'options') {
+        return `${indent}# [CORS:START]
+${indent}# CORS headers for all responses
+${indent}header Access-Control-Allow-Origin ${corsOrigin}
+${indent}header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+${indent}header Access-Control-Allow-Headers *
+${indent}# Handle OPTIONS preflight requests (CORS)
+${indent}@${matcherName} {
+${indent}    method OPTIONS
+${indent}}
+${indent}handle @${matcherName} {
+${indent}    header Access-Control-Allow-Origin ${corsOrigin}
+${indent}    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+${indent}    header Access-Control-Allow-Headers *
+${indent}    header Access-Control-Max-Age "86400"
+${indent}    respond "" 204
+${indent}}
+${indent}# [CORS:END]
+`;
+    }
+
+    /**
      * Generate Caddy configuration for a static React site (SPA)
      * @param {string} domain - Domain name
      * @param {string} rootPath - Document root path
@@ -53,15 +82,7 @@ class CaddyManager {
     root * ${rootPath}
     encode gzip
 
-    # [CORS:START]
-    # CORS headers
-    header Access-Control-Allow-Origin *
-    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers *
-    # Handle OPTIONS preflight requests (CORS)
-    @options method OPTIONS
-    respond @options 204
-    # [CORS:END]
+${this.generateCorsBlock('*')}
 ${phpConfig}
     # Enable compression (dynamic fallback)
     encode gzip
@@ -123,15 +144,7 @@ ${phpConfig}
     root * ${rootPath}
     encode gzip zstd
 
-    # [CORS:START]
-    # CORS headers
-    header Access-Control-Allow-Origin *
-    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers *
-    # Handle OPTIONS preflight requests (CORS)
-    @options method OPTIONS
-    respond @options 204
-    # [CORS:END]
+${this.generateCorsBlock('*')}
 
     # Canonicalise trailing slashes (except root) -> 308 redirect to clean URL
     @trailing_slash {
@@ -223,15 +236,7 @@ ${phpConfig}
     root * ${rootPath}
     encode gzip
 
-    # [CORS:START]
-    # CORS headers
-    header Access-Control-Allow-Origin *
-    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers *
-    # Handle OPTIONS preflight requests (CORS)
-    @options method OPTIONS
-    respond @options 204
-    # [CORS:END]
+${this.generateCorsBlock('*')}
 ${phpConfig}
     # Enable compression (dynamic fallback)
     encode gzip
@@ -281,15 +286,7 @@ ${phpConfig}
 
     root * ${rootPath}
 
-    # [CORS:START]
-    # CORS headers
-    header Access-Control-Allow-Origin *
-    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers *
-    # Handle OPTIONS preflight requests (CORS)
-    @options method OPTIONS
-    respond @options 204
-    # [CORS:END]
+${this.generateCorsBlock('*')}
 
     # Deny access to sensitive files (but allow uploads)
     @forbidden {
@@ -350,16 +347,7 @@ ${phpConfig}
         
         // Only add CORS headers if corsOrigin is provided
         const corsBlock = corsOrigin ? `
-    # [CORS:START]
-    # CORS headers
-    header Access-Control-Allow-Origin ${corsOrigin}
-    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers *
-    # Handle OPTIONS preflight requests (CORS)
-    @options method OPTIONS
-    respond @options 204
-    # [CORS:END]
-
+${this.generateCorsBlock(corsOrigin)}
 ` : '';
         
         return `https://${domain} {
@@ -384,11 +372,13 @@ ${corsBlock}
      * @returns {string} Caddy configuration snippet to add to parent config
      */
     generateSubdirConfig(mainDomain, subdir, type, rootPath, options = {}) {
-        const { enablePhp = false, proxyAddress = null } = options;
+        const { enablePhp = false, proxyAddress = null, corsOrigin = '' } = options;
         const phpFastcgiPath = process.env.PHP_FASTCGI_PATH || 'unix//run/php/php8.2-fpm.sock';
         const subdirId = subdir.replace(/[^a-zA-Z0-9]/g, '_');
 
         if (type === 'proxy') {
+            const corsBlock = corsOrigin ? `
+${this.generateCorsBlock(corsOrigin, '        ', `subdir_${subdirId}_options`)}` : '';
             return `
     # [SUBDIR:${subdir}:START]
     # Subdirectory Proxy: /${subdir}
@@ -399,6 +389,7 @@ ${corsBlock}
     redir @subdir_${subdirId}_notrail /${subdir}/ 308
     
     handle_path /${subdir}/* {
+${corsBlock}
         reverse_proxy http://${proxyAddress}
     }
     # [SUBDIR:${subdir}:END]
@@ -419,15 +410,7 @@ ${corsBlock}
     handle_path /${subdir}/* {
         root * ${rootPath}
 
-        # [CORS:START]
-        # CORS headers
-        header Access-Control-Allow-Origin *
-        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        header Access-Control-Allow-Headers *
-        # Handle OPTIONS preflight requests (CORS)
-        @subdir_${subdirId}_options method OPTIONS
-        respond @subdir_${subdirId}_options 204
-        # [CORS:END]
+${this.generateCorsBlock('*', '        ', `subdir_${subdirId}_options`)}
 
         encode gzip zstd
 
@@ -491,15 +474,7 @@ ${corsBlock}
     handle_path /${subdir}/* {
         root * ${rootPath}
         
-        # [CORS:START]
-        # CORS headers
-        header Access-Control-Allow-Origin *
-        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        header Access-Control-Allow-Headers *
-        # Handle OPTIONS preflight requests (CORS)
-        @subdir_${subdirId}_options method OPTIONS
-        respond @subdir_${subdirId}_options 204
-        # [CORS:END]
+${this.generateCorsBlock('*', '        ', `subdir_${subdirId}_options`)}
 ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip
@@ -538,15 +513,7 @@ ${phpBlock}
     handle_path /${subdir}/* {
         root * ${rootPath}
         
-        # [CORS:START]
-        # CORS headers
-        header Access-Control-Allow-Origin *
-        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        header Access-Control-Allow-Headers *
-        # Handle OPTIONS preflight requests (CORS)
-        @subdir_${subdirId}_options method OPTIONS
-        respond @subdir_${subdirId}_options 204
-        # [CORS:END]
+${this.generateCorsBlock('*', '        ', `subdir_${subdirId}_options`)}
 
         # Deny access to sensitive files (but allow uploads)
         @forbidden_${subdirId} {
@@ -599,15 +566,7 @@ ${phpBlock}
     handle_path /${subdir}/* {
         root * ${rootPath}
         
-        # [CORS:START]
-        # CORS headers
-        header Access-Control-Allow-Origin *
-        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        header Access-Control-Allow-Headers *
-        # Handle OPTIONS preflight requests (CORS)
-        @subdir_${subdirId}_options method OPTIONS
-        respond @subdir_${subdirId}_options 204
-        # [CORS:END]
+${this.generateCorsBlock('*', '        ', `subdir_${subdirId}_options`)}
 ${phpBlock}
         # Enable compression (dynamic fallback)
         encode gzip

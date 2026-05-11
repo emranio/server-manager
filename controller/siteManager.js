@@ -126,11 +126,19 @@ class SiteManager {
     updateSite(primaryKey, updates) {
         const data = this.readSites();
         if (data.sites[primaryKey]) {
-            data.sites[primaryKey] = {
+            const updatedSite = {
                 ...data.sites[primaryKey],
                 ...updates,
                 updatedAt: new Date().toISOString()
             };
+
+            Object.keys(updatedSite).forEach((key) => {
+                if (updatedSite[key] === undefined) {
+                    delete updatedSite[key];
+                }
+            });
+
+            data.sites[primaryKey] = updatedSite;
             this.writeSites(data);
         }
     }

@@ -4,8 +4,79 @@ import fs from 'fs';
 import logger from '../logger.js';
 import siteManager from '../siteManager.js';
 import caddyManager from '../caddyManager.js';
-import { generatePrimaryKey } from '../utils.js';
+import { generatePrimaryKey, parseDomain } from '../utils.js';
 import { displayBanner, displaySuccess, displayError, reloadCaddy } from './helpers.js';
+
+function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildSubdirId(subdir) {
+    return subdir.replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+function splitMainDomainSection(config) {
+    const subdirIndex = config.indexOf('\n    # [SUBDIR:');
+    if (subdirIndex === -1) {
+        return { mainSection: config, subdirSections: '' };
+    }
+    return {
+        mainSection: config.slice(0, subdirIndex),
+        subdirSections: config.slice(subdirIndex)
+    };
+}
+
+function upsertCorsBlock(section, corsOrigin, indent = '    ', matcherName = 'options') {
+    const corsBlock = caddyManager.generateCorsBlock(corsOrigin, indent, matcherName).trimEnd();
+    const corsBlockPattern = /\n?[ \t]*# \[CORS:START\][\s\S]*?[ \t]*# \[CORS:END\]\n?/;
+
+    if (corsBlockPattern.test(section)) {
+        return section.replace(corsBlockPattern, `\n${corsBlock}\n`);
+    }
+
+    const escapedIndent = escapeRegExp(indent);
+    const rootPattern = new RegExp(`(\\n${escapedIndent}root \\* [^\\n]+\\n)`);
+    const encodePattern = new RegExp(`(\\n${escapedIndent}encode [^\\n]+\\n)`);
+    const handlePathPattern = /(\n\s*handle_path [^{]+\{\n)/;
+    const bindPattern = /(\n\s*bind 0\.0\.0\.0[^\n]*\n)/;
+
+    if (rootPattern.test(section)) {
+        return section.replace(rootPattern, `$1\n${corsBlock}\n`);
+    }
+    if (encodePattern.test(section)) {
+        return section.replace(encodePattern, `$1\n${corsBlock}\n`);
+    }
+    if (handlePathPattern.test(section)) {
+        return section.replace(handlePathPattern, `$1${corsBlock}\n`);
+    }
+    if (bindPattern.test(section)) {
+        return section.replace(bindPattern, `$1\n${corsBlock}\n`);
+    }
+
+    throw new Error('Could not find a safe insertion point for the CORS block');
+}
+
+function removeCorsBlock(section) {
+    return section
+        .replace(/\n?[ \t]*# \[CORS:START\][\s\S]*?[ \t]*# \[CORS:END\]\n*/g, '\n')
+        .replace(/\n?[ \t]*# CORS headers(?: for all responses)?\n(?:[ \t]*header Access-Control-Allow-Origin .+\n)?(?:[ \t]*header Access-Control-Allow-Methods .+\n)?(?:[ \t]*header Access-Control-Allow-Headers .+\n)?(?:[ \t]*header Access-Control-Max-Age .+\n)?/g, '\n')
+        .replace(/\n?[ \t]*# Handle OPTIONS preflight requests(?: \(CORS\))?\n/g, '\n')
+        .replace(/\n?[ \t]*@options\s*\{[\s\S]*?\}\n[ \t]*(?:handle @options\s*\{[\s\S]*?respond "" 204\n[ \t]*\}|respond @options 204)\n*/g, '\n')
+        .replace(/\n?[ \t]*@options method OPTIONS\n[ \t]*respond @options 204\n*/g, '\n')
+        .replace(/\n{3,}/g, '\n\n');
+}
+
+function updateSubdirSection(config, subdir, updater) {
+    const escapedSubdir = escapeRegExp(subdir);
+    const subdirPattern = new RegExp(`# \\[SUBDIR:${escapedSubdir}:START\\][\\s\\S]*?# \\[SUBDIR:${escapedSubdir}:END\\]`);
+    const match = config.match(subdirPattern);
+
+    if (!match) {
+        throw new Error(`Subdirectory Caddy block not found for /${subdir}`);
+    }
+
+    return config.replace(match[0], updater(match[0]));
+}
 
 /**
  * Manage CORS Command
@@ -74,63 +145,36 @@ export default async function manageCors() {
 
         // Read the config file
         let config = fs.readFileSync(configPath, 'utf8');
+        const parsedDomain = parseDomain(domain);
 
         if (action === 'add') {
-            // Check if CORS block exists using markers
-            const corsBlockPattern = /# \[CORS:START\][\s\S]*?# \[CORS:END\]/;
-            
-            if (corsBlockPattern.test(config)) {
-                // Update existing CORS header within the marked block
-                config = config.replace(
-                    /(# \[CORS:START\]\n\s*# CORS headers\n\s*)header Access-Control-Allow-Origin [^\n]+/,
-                    `$1header Access-Control-Allow-Origin ${corsOrigin}`
-                );
-                console.log(chalk.green('✓ Updated CORS header'));
+            if (parsedDomain.isSubdir) {
+                const subdirId = buildSubdirId(parsedDomain.subdir);
+                config = updateSubdirSection(config, parsedDomain.subdir, (subdirBlock) => {
+                    return upsertCorsBlock(subdirBlock, corsOrigin, '        ', `subdir_${subdirId}_options`);
+                });
+                console.log(chalk.green('✓ Added/updated subdirectory CORS handler'));
             } else {
-                // Check for legacy CORS (without markers) and update
-                const legacyCorsPattern = /header Access-Control-Allow-Origin .+/;
-                if (legacyCorsPattern.test(config)) {
-                    config = config.replace(legacyCorsPattern, `header Access-Control-Allow-Origin ${corsOrigin}`);
-                    console.log(chalk.green('✓ Updated CORS header (legacy format)'));
-                } else {
-                    // Add CORS headers block with markers after encode gzip or bind
-                    const insertPattern = /(encode gzip[^\n]*\n)/;
-                    const corsBlock = `$1
-    # [CORS:START]
-    # CORS headers
-    header Access-Control-Allow-Origin ${corsOrigin}
-    header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    header Access-Control-Allow-Headers *
-    # [CORS:END]
-
-`;
-                    config = config.replace(insertPattern, corsBlock);
-                    console.log(chalk.green('✓ Added CORS headers'));
-                }
+                const { mainSection, subdirSections } = splitMainDomainSection(config);
+                config = upsertCorsBlock(mainSection, corsOrigin, '    ', 'options') + subdirSections;
+                console.log(chalk.green('✓ Added/updated CORS handler'));
             }
 
             // Update site data
             siteManager.updateSite(primaryKey, { corsOrigin });
             logger.info('CORS added/updated', { domain, corsOrigin });
         } else {
-            // Remove CORS headers using markers
-            const corsBlockPattern = /\n?\s*# \[CORS:START\][\s\S]*?# \[CORS:END\]\n*/g;
-            config = config.replace(corsBlockPattern, '\n');
-            
-            // Also remove legacy CORS/preflight blocks (without markers) if they exist
-            config = config.replace(/\n?\s*# CORS headers\n(?:\s*header Access-Control-Allow-Origin .+\n)?(?:\s*header Access-Control-Allow-Methods .+\n)?(?:\s*header Access-Control-Allow-Headers .+\n)?\s*(?:# Handle OPTIONS preflight requests\n)?\s*(?:@options\s*\{[\s\S]*?\}\n\s*respond @options 204\n?)?/g, '\n');
-            config = config.replace(/\n?\s*# Handle OPTIONS preflight requests\n/g, '\n');
-            config = config.replace(/\n?\s*@options\s*\{[\s\S]*?\}\n\s*respond @options 204\n*/g, '\n');
-            config = config.replace(/\s*header Access-Control-Allow-Origin .+\n/g, '');
-            config = config.replace(/\s*header Access-Control-Allow-Methods .+\n/g, '');
-            config = config.replace(/\s*header Access-Control-Allow-Headers .+\n/g, '');
-            
-            console.log(chalk.green('✓ Removed CORS headers'));
+            if (parsedDomain.isSubdir) {
+                config = updateSubdirSection(config, parsedDomain.subdir, removeCorsBlock);
+                console.log(chalk.green('✓ Removed subdirectory CORS handler'));
+            } else {
+                const { mainSection, subdirSections } = splitMainDomainSection(config);
+                config = removeCorsBlock(mainSection) + subdirSections;
+                console.log(chalk.green('✓ Removed CORS handler'));
+            }
 
             // Update site data
-            const updatedData = { ...site };
-            delete updatedData.corsOrigin;
-            siteManager.updateSite(primaryKey, updatedData);
+            siteManager.updateSite(primaryKey, { corsOrigin: undefined });
             logger.info('CORS removed', { domain });
         }
 
