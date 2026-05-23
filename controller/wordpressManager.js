@@ -146,6 +146,13 @@ class WordPressManager {
         adminEmail,
       );
 
+      // Without this, WP's filesystem detection picks ssh2/ftpext under our
+      // shared-user setup (files owned by ubuntu, php-fpm runs as www-data)
+      // and plugin/theme writes prompt for FTP creds or throw a fatal.
+      await executeCommand(
+        `php -d memory_limit=1G $(which wp) config set FS_METHOD direct --type=constant --path="${sitePath}" --quiet`,
+      );
+
       return {
         adminUser: "admin",
         adminPassword: adminPassword,
