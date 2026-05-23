@@ -12,7 +12,8 @@ import {
     generatePrimaryKey,
     generatePassword,
     isValidDomain,
-    parseDomain
+    parseDomain,
+    applySharedAccess
 } from '../utils.js';
 import { displayBanner, displaySuccess, displayError, displayStep, reloadCaddy } from './helpers.js';
 
@@ -256,6 +257,13 @@ export default async function addSite() {
                 displayStep(4, 5, 'Installing WordPress (this may take a moment)...');
                 wpDetails = await wordpressManager.setupWordPress(publicPath, domain, primaryKey, adminPassword);
                 logger.info('WordPress initialized', { domain, ...wpDetails });
+            }
+
+            // Make the new site dir group-writable by www-data (php-fpm), with
+            // setgid so future writes inherit the group. Skip for proxy: no dir.
+            if (type !== 'proxy') {
+                await applySharedAccess(sitePath);
+                logger.info('Shared access applied', { domain, path: sitePath });
             }
 
             // Step 5 (or 2 for site/react/proxy): Create Caddy config

@@ -58,6 +58,20 @@ export async function executeCommand(command) {
 }
 
 /**
+ * Apply shared-access perms to a freshly-created site directory.
+ * Sets group to www-data, mode to 775/664 (capital X preserves exec on dirs and
+ * already-executable files), and setgid on directories so future writes inherit
+ * the group. Requires the invoking user to be a member of www-data and to own
+ * the files (which is the case for sites created by `node cli.js add`).
+ */
+export async function applySharedAccess(sitePath) {
+    const p = sitePath.replace(/"/g, '\\"');
+    await execAsync(`chgrp -R www-data "${p}"`);
+    await execAsync(`chmod -R u=rwX,g=rwX,o=rX "${p}"`);
+    await execAsync(`find "${p}" -type d -exec chmod g+s {} +`);
+}
+
+/**
  * Validate domain name format
  * @param {string} domain - Domain name to validate
  * @returns {boolean} True if valid
