@@ -1,4 +1,4 @@
-import { executeCommand } from "./utils.js";
+import { executeCommand, getWpCliCommand } from "./utils.js";
 import databaseManager from "./databaseManager.js";
 import dotenv from "dotenv";
 
@@ -31,7 +31,7 @@ class WordPressManager {
   async downloadWordPress(sitePath) {
     try {
       // Set PHP memory limit to 1GB for WP-CLI
-      const command = `php -d memory_limit=1G $(which wp) core download --path="${sitePath}" --quiet`;
+      const command = `php -d memory_limit=1G ${getWpCliCommand()} core download --path="${sitePath}" --quiet`;
       await executeCommand(command);
     } catch (error) {
       throw new Error(`Failed to download WordPress: ${error.message}`);
@@ -56,7 +56,7 @@ class WordPressManager {
     dbPrefix = "wp_",
   ) {
     try {
-      const command = `php -d memory_limit=1G $(which wp) config create --path="${sitePath}" --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPassword}" --dbhost="${dbHost}" --dbprefix="${dbPrefix}" --quiet`;
+      const command = `php -d memory_limit=1G ${getWpCliCommand()} config create --path="${sitePath}" --dbname="${dbName}" --dbuser="${dbUser}" --dbpass="${dbPassword}" --dbhost="${dbHost}" --dbprefix="${dbPrefix}" --quiet`;
       await executeCommand(command);
     } catch (error) {
       throw new Error(`Failed to create wp-config.php: ${error.message}`);
@@ -82,7 +82,7 @@ class WordPressManager {
     adminEmail,
   ) {
     try {
-      const command = `php -d memory_limit=1G $(which wp) core install --path="${sitePath}" --url="${url}" --title="${title}" --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --quiet`;
+      const command = `php -d memory_limit=1G ${getWpCliCommand()} core install --path="${sitePath}" --url="${url}" --title="${title}" --admin_user="${adminUser}" --admin_password="${adminPassword}" --admin_email="${adminEmail}" --quiet`;
       await executeCommand(command);
     } catch (error) {
       throw new Error(`Failed to install WordPress: ${error.message}`);
@@ -150,7 +150,7 @@ class WordPressManager {
       // shared-user setup (files owned by ubuntu, php-fpm runs as www-data)
       // and plugin/theme writes prompt for FTP creds or throw a fatal.
       await executeCommand(
-        `php -d memory_limit=1G $(which wp) config set FS_METHOD direct --type=constant --path="${sitePath}" --quiet`,
+        `php -d memory_limit=1G ${getWpCliCommand()} config set FS_METHOD direct --type=constant --path="${sitePath}" --quiet`,
       );
 
       return {

@@ -58,6 +58,16 @@ export async function executeCommand(command) {
 }
 
 /**
+ * Get WP-CLI command with optional root execution flag.
+ * ALLOW_ROOT_FOR_WP defaults to false; set it to "true" to pass --allow-root.
+ * @returns {string} WP-CLI command segment
+ */
+export function getWpCliCommand() {
+    const allowRoot = String(process.env.ALLOW_ROOT_FOR_WP || '').toLowerCase() === 'true';
+    return `$(which wp)${allowRoot ? ' --allow-root' : ''}`;
+}
+
+/**
  * Apply shared-access perms to a freshly-created site directory.
  * Sets group to www-data, mode to 775/664 (capital X preserves exec on dirs and
  * already-executable files), and setgid on directories so future writes inherit

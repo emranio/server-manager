@@ -2,8 +2,7 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import logger from '../logger.js';
 import siteManager from '../siteManager.js';
-import { generatePrimaryKey, generatePassword } from '../utils.js';
-import { executeCommand } from '../utils.js';
+import { executeCommand, generatePrimaryKey, generatePassword, getWpCliCommand } from '../utils.js';
 import { displayBanner, displaySuccess, displayError } from './helpers.js';
 
 /**
@@ -88,7 +87,7 @@ export default async function resetWpPassword() {
         const newPassword = generatePassword(16);
 
         // Reset password using WP-CLI
-        const resetCommand = `php -d memory_limit=5G $(which wp) user update "${userIdentifier}" --user_pass="${newPassword}" --path="${site.path}"`;
+        const resetCommand = `php -d memory_limit=5G ${getWpCliCommand()} user update "${userIdentifier}" --user_pass="${newPassword}" --path="${site.path}"`;
 
         try {
             await executeCommand(resetCommand);
